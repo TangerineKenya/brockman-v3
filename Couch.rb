@@ -73,11 +73,12 @@ class Couch
     data['keys'] = "" unless data['keys']
     requestKey = "#{url}-#{data['keys']}"
 
-
     response = CacheHandler::tryCache(requestKey, lambda {
       postResponse = RestClient.post( url, data.to_json, arOptions )
       return JSON.parse postResponse
     })
+
+
 
     return response
 

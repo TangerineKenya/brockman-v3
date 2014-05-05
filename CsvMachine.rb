@@ -283,7 +283,7 @@ class CsvMachine < Sinatra::Base
             <th># of classroom visits</th>
             <th>Targeted number of classroom visits</th>
             #{result['fluency']['subjects'].map{ | subject |
-              "<th>Average items per minute - #{subject}</th>"
+              "<th>#{subject} per minute</th>"
             }.join}
             
             <th>Students that met benchmark</th>
@@ -323,8 +323,8 @@ class CsvMachine < Sinatra::Base
                 "<td>#{average}</td>"
               }.join}
 
-              <td>#{met}</td>
-              <td>#{(met / sampleTotal) * 100}</td>
+              <td>#{met}</td>|\
+              <td>#{([met,1].max / [sampleTotal,1].max) * 100}</td>
             </tr>
           "}.join }
         </tbody>
@@ -403,11 +403,8 @@ class CsvMachine < Sinatra::Base
             size = 1 if size == 0 or size.nil?
             sum  = 1 if sum  == 0 or sum.nil?
 
-            if met
-              percentageMet = (met / size) * 100
-            else
-              percentageMet = 0
-            end
+            percentageMet = percentage(size, met)
+
           "
             <tr>
               <td>#{visits}</td>
@@ -509,7 +506,6 @@ class CsvMachine < Sinatra::Base
 
   get '/email/:email/:group/:workflowIds/:year/:month/:county' do | email, group, workflowIds, year, month, county |
 
-
     requestId = SecureRandom.base64
 
     $logger.info "(#{requestId}) email - #{group}"
@@ -520,6 +516,9 @@ class CsvMachine < Sinatra::Base
       :designDoc => $settings[:designDoc],
       :db        => group
     })
+
+    # @hardcode who is formal
+    formalZones = ["waruku","posta","silanga","kayole","gichagi","congo","zimmerman","chokaa"]
 
     geography = couch.getRequest({ :document => "geography-quotas" })
     quotasByZones  = {}
@@ -569,7 +568,7 @@ class CsvMachine < Sinatra::Base
 
     result = {}
 
-    result['visits'] = CacheHandler::tryCache "visits-#{monthGroup}-#{tripKeys.join}", lambda {
+    result['visits'] = CacheHandler::tryCache "email-visits-#{monthGroup}-#{tripKeys.join}", lambda {
       byZone = {}
       byCounty = {}
       national = 0
@@ -596,7 +595,7 @@ class CsvMachine < Sinatra::Base
     }
 
 
-    result['fluency'] = CacheHandler::tryCache "fluency-#{monthGroup}-#{tripKeys.join}", lambda {
+    result['fluency'] = CacheHandler::tryCache "email-fluency-#{monthGroup}-#{tripKeys.join}", lambda {
 
       byZone = {}
       byCounty = {}
@@ -606,6 +605,7 @@ class CsvMachine < Sinatra::Base
       for sum in tripRows
 
         next if sum['value']['zone'].nil? or sum['value']['itemsPerMinute'].nil?
+        next if sum['value']['subject'].nil? or sum['value']['subject'] == "" 
 
         zoneName   = sum['value']['zone'].downcase
         countyName = sum['value']['county'].downcase
@@ -655,30 +655,32 @@ class CsvMachine < Sinatra::Base
       }
     } # result['fluency']
 
-    p result['fluency']['subjects'].to_json
-
-    result['metBenchmark'] = CacheHandler::tryCache "met-benchmark-#{monthGroup}-#{tripKeys.join}", lambda {
+    result['metBenchmark'] = CacheHandler::tryCache "email-met-benchmark-#{monthGroup}-#{tripKeys.join}", lambda {
 
       byZone   = {}
       byCounty = {}
-      national = 0
+      national = {}
 
       for sum in tripRows
 
-        next if sum['value']['zone'].nil?
+        next if sum['value']['zone'].nil? or sum['value']['subject'].nil?
 
         zoneName   = sum['value']['zone'].downcase
         countyName = sum['value']['county'].downcase
+        subject    = sum['value']['subject'].downcase
 
         met = sum['value']['metBenchmark']
 
-        byZone[zoneName] = 0 unless byZone[zoneName]
-        byZone[zoneName] += met
+        byZone[zoneName] = {} unless byZone[zoneName]
+        byZone[zoneName][subject] = 0 unless byZone[zoneName][subject]
+        byZone[zoneName][subject] += met
 
-        byCounty[countyName] = 0 unless byCounty[countyName]
-        byCounty[countyName] += met
+        byCounty[countyName] = {} unless byCounty[countyName]
+        byCounty[countyName][subject] = 0 unless byCounty[countyName][subject]
+        byCounty[countyName][subject] += met
 
-        national += met
+        national[subject] = 0 unless national[subject]
+        national[subject] += met
 
       end
 
@@ -692,7 +694,7 @@ class CsvMachine < Sinatra::Base
 
 
 
-    result['zonesByCounty'] = CacheHandler::tryCache "zones-by-county-#{monthGroup}-#{tripKeys.join}", lambda {
+    result['zonesByCounty'] = CacheHandler::tryCache "email-zones-by-county-#{monthGroup}-#{tripKeys.join}", lambda {
       counties = {}
       for sum in tripRows
 
@@ -707,11 +709,14 @@ class CsvMachine < Sinatra::Base
       return counties
     }
 
+    puts "results by county"
+    puts result['zonesByCounty']
+    puts "county one #{county.downcase}"
     zones = result['zonesByCounty'][county.downcase].sort_by{|word| word.downcase}
 
     row = 0
 
-    subjectLegend = { "word" => "Kiswahili", "english_word" => "English", "operation" => "Math" }
+    subjectLegend = { "word" => "Kiswahili", "english_word" => "English", "operation" => "Maths" }
 
     zoneTableHtml = "
       <table class='dataTable'>
@@ -721,12 +726,8 @@ class CsvMachine < Sinatra::Base
             <th class='sorting'># of classroom visits</th>
             <th class='sorting'>Targeted number of classroom visits</th>
             #{result['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-              "<th class='sorting'>Average items per minute - #{subjectLegend[subject]}</th>"
+              "<th class='sorting'>#{subjectLegend[subject]} - per minute<br>#{"<small>( met KNEC benchmark / percentage ** )</small>" if subject != "operation"}</th>"
             }.join}
-            
-            <th class='sorting'>Students that met benchmark</th>
-            <th class='sorting'>% of those assessed</th>
-
           </tr>
         </thead>
         <tbody>
@@ -746,29 +747,44 @@ class CsvMachine < Sinatra::Base
 
             sampleTotal = 0
 
+            nonFormalAsterisk = if formalZones.include? zone.downcase then "*" else "" end
+
           "
-            <tr class='#{if row % 2 == 0 then "even" else "odd" end}'>
-              <td>#{zone.capitalize}</td>
+            <tr class='#{if row % 2 == 0 then "even" else "odd" end }'> 
+              <td>#{zone.capitalize} <span title='Non-formal'>#{nonFormalAsterisk}</span></td>
               <td>#{visits}</td>
               <td>#{quota}</td>
               #{result['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = result['fluency']['byZone'][zone][subject]
-                
-                if sample && sample['size'] != 0 && sample['sum'] != 0
-                  sampleTotal += sample['size']
-                  average = ( sample['sum'] / sample['size'] ).round
+                if sample.nil?
+                  average = "no data"
                 else
-                  average = ''
+                  
+                  if sample && sample['size'] != 0 && sample['sum'] != 0
+                    sampleTotal += sample['size']
+                    average = ( sample['sum'] / sample['size'] ).round
+                  else
+                    average = '0'
+                  end
+
+                  if subject != 'operation'
+                    benchmark = result['metBenchmark']['byZone'][zone][subject]
+                    percentage = percentage( sample['size'], benchmark )
+                    benchmarks = "( #{benchmark}<sub>total</sub> #{percentage}% )"
+                  end
+
                 end
-                "<td>#{average}</td>"
+
+                "<td>#{average}<sub>avg</sub> #{benchmarks}</td>"
               }.join}
 
-              <td>#{met}</td>
-              <td>#{(met / sampleTotal) * 100}</td>
             </tr>
           "}.join }
         </tbody>
       </table>
+      <p>
+        * Non-formal
+        ** Percentage of those assessed that met KNEC benchmark</p>
 
     "
 
@@ -790,7 +806,9 @@ class CsvMachine < Sinatra::Base
           #{year} #{["","Jan","Feb","Mar","Apr","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
         </h2>
         #{zoneTableHtml}
-
+        <p>
+          <a href='http://databases.tangerinecentral.org/#{group}/_design/ojai/index.html#map/startTime/#{year}-#{month.to_i.to_s.rjust(2,"0")}/endTime/#{year}-#{(month.to_i+1).to_s.rjust(2,"0")}'>View Map</a>
+        </p>
         </body>
       </html>
       "
@@ -804,7 +822,7 @@ class CsvMachine < Sinatra::Base
       
       mail = Mail.deliver do
         to      email
-        from    'Tangerine <no-reply@tangerinecentral.org>'
+        from    'Tablets Programme <no-reply@tangerinecentral.org>'
         subject 'Report for your county'
 
         html_part do
@@ -894,6 +912,10 @@ class CsvMachine < Sinatra::Base
     })
 
     $logger.info "(#{requestId}) Received #{allResults['rows'].length} results"
+    if allResults['rows'].length == 0 then
+      $logger.error "No results: #{allResults.to_json}\nRequested #{allResultIds.length} results"
+
+    end
 
     # for easy lookup
     allResultsById = Hash[allResults['rows'].map { |row| [row['id'], row['value'] ] }]
