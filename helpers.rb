@@ -26,5 +26,22 @@ def percentage(total, portion)
 
 end
 
+def countyTranslate(zone)
+  if zone == "thika"
+    return "kiambu"
+  else
+    return zone
+  end
+end
+
+
+
+def zoneTranslate(zone)
+  if zone.index("zone")
+    return zone.gsub(" zone", "")
+  else
+    return zone
+  end
+end
 
 

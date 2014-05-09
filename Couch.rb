@@ -23,16 +23,11 @@ class Couch
     # authenticate session cookie and get userCtx
     sessionResponse = getRequest( :db => "_session", :cookies => arCookies )
 
-    # if they're not logged in
-    if sessionResponse['ok']
-      userCtx = sessionResponse["userCtx"]
-      name    = userCtx['name']
-      unless name
-        return { :valid => false }
-      end
+    if sessionResponse['ok'] && ! sessionResponse['userCtx']['name'].nil?
+      return { :valid => true, :name => sessionResponse['userCtx']['name']}
+    else
+      return { :valid => false }
     end
-
-    return { :valid => true, :name => name }
 
   end # of authenticate
 
@@ -70,12 +65,21 @@ class Couch
     data = arOptions[:data]
     arOptions.delete(:data)
 
+    if arOptions[:json].nil?
+      json = true
+    else
+      json = arOptions[:json]
+      arOptions.delete(:json)
+    end
+    
+
     data['keys'] = "" unless data['keys']
     requestKey = "#{url}-#{data['keys']}"
 
     response = CacheHandler::tryCache(requestKey, lambda {
       postResponse = RestClient.post( url, data.to_json, arOptions )
-      return JSON.parse postResponse
+      return JSON.parse postResponse if json
+      return postResponse
     })
 
 
