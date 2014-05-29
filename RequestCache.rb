@@ -4,8 +4,7 @@ require './helpers.rb'
 require 'rest-client'
 require 'data_mapper'
 
-
-DataMapper::Logger.new("#{File.join(Dir.pwd, 'brockman.log')}", :debug)
+# DataMapper::Logger.new("#{File.join(Dir.pwd, 'brockman.log')}", :debug)
 
 DataMapper.setup(:default, "sqlite://#{File.join(Dir.pwd,'brockman.db')}")
 DataMapper::Model.raise_on_save_failure = true

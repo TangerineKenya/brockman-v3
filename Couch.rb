@@ -21,7 +21,7 @@ class Couch
   def authenticate( arCookies )
 
     # authenticate session cookie and get userCtx
-    sessionResponse = getRequest( :db => "_session", :cookies => arCookies )
+    sessionResponse = getRequest( :db => "_session", :cookies => arCookies, :seed => rand(1e25), :login => "")
 
     if sessionResponse['ok'] && ! sessionResponse['userCtx']['name'].nil?
       return { :valid => true, :name => sessionResponse['userCtx']['name']}
@@ -44,8 +44,11 @@ class Couch
     arOptions[:params] = {} if arOptions[:params].nil?
     arOptions[:params][:key] = "" if arOptions[:params][:key].nil?
 
+    arOptions[:seed] = "" unless arOptions[:seed]
+
     requestOptions.merge!( arOptions )
-    requestKey = "#{url}-#{arOptions[:params][:key]}"
+    requestKey = "#{url}-#{arOptions[:params][:key]}#{arOptions[:seed]}"
+    arOptions.delete(:seed)
 
     response = CacheHandler::tryCache(requestKey, lambda {
       return JSON.parse RestClient.get( url, requestOptions ).to_s
@@ -74,7 +77,9 @@ class Couch
     
 
     data['keys'] = "" unless data['keys']
-    requestKey = "#{url}-#{data['keys']}"
+    arOptions[:seed] = "" unless arOptions[:seed]
+    requestKey = "#{url}-#{data['keys']}#{arOptions[:seed]}"
+    arOptions.delete(:seed)
 
     response = CacheHandler::tryCache(requestKey, lambda {
       postResponse = RestClient.post( url, data.to_json, arOptions )
@@ -106,7 +111,9 @@ class Couch
     options[:db]        = @db        unless options[:db]
     options[:designDoc] = @designDoc unless options[:designDoc]
 
-    if options[:view]
+    if options[:list]
+      url = "http://#{loginString}#{@host}/#{options[:db]}/_design/#{options[:designDoc]}/_list/#{options[:list]}/#{options[:view]}"
+    elsif options[:view]
       url = "http://#{loginString}#{@host}/#{options[:db]}/_design/#{options[:designDoc]}/_view/#{options[:view]}"
     elsif options[:document]
       url = "http://#{loginString}#{@host}/#{options[:db]}/#{options[:document]}"
