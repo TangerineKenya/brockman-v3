@@ -36,8 +36,8 @@ class Csv
           machineName = cell['machineName'] + resultIndex.to_s
 
           # hack for handling time
-          isTimeRelated = key.match(/timestamp/) || key.match(/start_time/)
-          isntFalsy       = ! ( value.nil? || value == "" || value == 0 )
+          isTimeRelated = key.match(/timestamp/) || key.match(/start_time/) || key.match(/startTime/)
+          isntFalsy     = ! ( value.nil? || value == "" || value == 0 )
           if isTimeRelated && isntFalsy then value = Time.at(value.to_i / 1000).strftime("%yy %mm %dd %Hh %Mm") end
 
           unless machineNames.include?(machineName)
