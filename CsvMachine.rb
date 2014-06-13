@@ -70,7 +70,7 @@ class CsvMachine < Sinatra::Base
 
     requestId = SecureRandom.base64
 
-    $logger.info "(#{requestId}) email - #{group}"
+    $logger.info "email - #{group}"
 
     couch = Couch.new({
       :host      => $settings[:host],
@@ -104,17 +104,18 @@ class CsvMachine < Sinatra::Base
     monthKey        = "\"year#{year}month#{month}\""
     tripsFromMonth  = couch.getRequest({ :view => "tutorTrips", :params => { :key => monthKey } } )
 
-    tripIds = tripsFromMonth['rows'].map{ |e| e['value'] }
+    tripIdsFromMonth = tripsFromMonth['rows'].map{ |e| e['value'] }
 
     # if workflows specified, filter trips to those workflows
     if workflowIds != "all"
-      workflowKey       = workflowIds.split(",").map{ |s| "workflow-#{s}" }
-      tripsFromWorkflow = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKey } } )['rows'].map{ |e| e['value'] }
-      tripIds           = tripIds & tripsFromWorkflow
+      workflowKeys      = workflowIds.split(",").map{ |s| "workflow-#{s}" }
+      tripsFromWorkflow = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKeys } } )['rows'].map{ |e| e['value'] }
+      tripIds           = tripIdsFromMonth & tripsFromWorkflow # intersection
     end
 
     # get summaries from trips
     tripKeys      = tripIds.uniq
+
     tripsResponse = couch.postRequest({ :view => "spirtRotut?group=true", :data => { "keys" => tripKeys } } )
 
     tripRows = tripsResponse['rows']
@@ -522,7 +523,7 @@ class CsvMachine < Sinatra::Base
 
     requestId = SecureRandom.base64
 
-    $logger.info "(#{requestId}) email - #{group}"
+    $logger.info "email - #{group}"
 
     couch = Couch.new({
       :host      => $settings[:host],
@@ -1346,9 +1347,7 @@ class CsvMachine < Sinatra::Base
 
   get '/workflow/:group/:workflowId' do | groupPath, workflowId |
 
-    requestId = SecureRandom.base64
-
-    $logger.info "(#{requestId}) CSV request - #{groupPath} #{workflowId}"
+    $logger.info "CSV request - #{groupPath} #{workflowId}"
 
     couch = Couch.new({
       :host      => $settings[:host],
@@ -1366,12 +1365,12 @@ class CsvMachine < Sinatra::Base
     authenticate = couch.authenticate(cookies)
 
     unless authenticate[:valid] == true
-      $logger.info "(#{requestId}) Authentication failed"
+      $logger.info "Authentication failed"
       status 401
       return { :error => "not logged in" }.to_json
     end
 
-    $logger.info "(#{requestId}) User #{authenticate[:name]} authenticated"
+    $logger.info "User #{authenticate[:name]} authenticated"
 
     #
     # get workflow
@@ -1379,19 +1378,19 @@ class CsvMachine < Sinatra::Base
 
     workflow = couch.getRequest({ :document => workflowId })
     workflowName = workflow['name']
-    $logger.info "(#{requestId}) Beginning #{workflowName}"
+    $logger.info "Beginning #{workflowName}"
 
     #
     # Get csv rows from view
     #
 
-    # get all results associated with workflow
-    resultRows = couch.postRequest({
+    # get all trip Ids associated with workflow
+    resultRows = couch.postRequest({ 
       :view => "resultsByWorkflowId",
       :data => { "keys" => [workflowId] }
     })['rows']
 
-    $logger.info "(#{requestId}) Received #{resultRows.length} result ids"
+    $logger.info "Received #{resultRows.length} result ids"
 
     # group results together by trip
     resultsByTripId = {}
@@ -1416,7 +1415,7 @@ class CsvMachine < Sinatra::Base
       :data => { "keys" => allResultIds }
     })
 
-    $logger.info "(#{requestId}) Received #{allResults['rows'].length} results"
+    $logger.info "Received #{allResults['rows'].length} results"
     if allResults['rows'].length == 0 then
       $logger.error "No results: #{allResults.to_json}\nRequested #{allResultIds.length} results"
 
@@ -1425,7 +1424,7 @@ class CsvMachine < Sinatra::Base
     # for easy lookup
     allResultsById = Hash[allResults['rows'].map { |row| [row['id'], row['value'] ] }]
 
-    $logger.info "(#{requestId}) Processing start"
+    $logger.info "Processing start"
 
     csv = Csv.new({
       :name => workflowName,
@@ -1437,7 +1436,7 @@ class CsvMachine < Sinatra::Base
       :resultsByTripId => resultsByTripId
     })
 
-    $logger.info "(#{requestId}) Done, returning value"
+    $logger.info "Done, returning value"
 
     send_file file[:uri], { :filename => "#{groupPath[6..-1]}-#{file[:name]}" }
 
@@ -1452,6 +1451,13 @@ class CsvMachine < Sinatra::Base
 
     requestId = SecureRandom.base64
 
+    couch = Couch.new({
+      :host      => $settings[:host],
+      :login     => $settings[:login],
+      :designDoc => $settings[:designDoc],
+      :db        => group
+    })
+
     #
     # Authentication
     #
@@ -1459,22 +1465,21 @@ class CsvMachine < Sinatra::Base
     authenticate = couch.authenticate(cookies)
 
     unless authenticate[:valid] == true
-      $logger.info "(#{requestId}) Authentication failed"
+      $logger.info "Authentication failed"
       status 401
       return { :error => "not logged in" }.to_json
     end
 
+    groupPath = "group-#{group.gsub(/group-/,'')}"
 
-    groupPath = calcGroupName group
-
-    assessmentName = JSON.parse(RestClient.get("http://#{$login}@#{$host}/#{groupPath}/#{assessmentId}"))['name']
+    assessmentName = JSON.parse(RestClient.get("http://#{$settings[:login]}@#{$settings[:host]}/#{groupPath}/#{assessmentId}"))['name']
 
     # Get csv rows for klass
     csvData = {
       :keys => [assessmentId]
     }
 
-    csvRowResponse = JSON.parse(RestClient.post("http://#{$login}@#{$host}/#{groupPath}/_design/ojai/_view/csvRows",csvData.to_json, :content_type => :json,:accept => :json ))
+    csvRowResponse = JSON.parse(RestClient.post("http://#{$settings[:login]}@#{$settings[:host]}/#{groupPath}/_design/ojai/_view/csvRows",csvData.to_json, :content_type => :json,:accept => :json ))
 
     columnNames = []
     machineNames = []
@@ -1535,7 +1540,7 @@ class CsvMachine < Sinatra::Base
     authenticate = couch.authenticate(cookies)
 
     unless authenticate[:valid] == true
-      $logger.info "(#{requestId}) Authentication failed"
+      $logger.info "Authentication failed"
       status 401
       return { :error => "not logged in" }.to_json
     end
