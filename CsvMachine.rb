@@ -372,7 +372,7 @@ class CsvMachine < Sinatra::Base
     zoneHtml = "
       <h2>
         #{county.capitalize} County Report
-        #{year} #{["","Jan","Feb","Mar","Apr","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
+        #{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
       </h2>
       #{zoneTableHtml}
     "
@@ -441,7 +441,7 @@ class CsvMachine < Sinatra::Base
     countiesHtml = "
       <h2>
         #{county.capitalize} County Report
-        #{year} #{["","Jan","Feb","Mar","Apr","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
+        #{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
       </h2>
       #{countiesTableHtml}
     "
@@ -799,38 +799,41 @@ class CsvMachine < Sinatra::Base
     # Awesome chart stuff
     #
 
-    chartJsOnReady = "
-      var TREND_YEARS = 4;  // number of years to try to pull into trend
-      var month = 4;  // starting month
-      var year = 2014; // starting year
-    
-      var base = '/'; // will need to update this for live development
-      var quotas_link = '/#{group}/geography-quotas';
-
-      // create links for trends by month
-      for(var i=TREND_YEARS;i>0;i--)
-      {
-        dates[i] = { month:month--, year:year};
-        if(month==0)
-        {
-          year--;
-          month = 12;
-        }
-        dates[i].link = base+'_csv/report/group-tutor_feb_25/00b0a09a-2a9f-baca-2acb-c6264d4247cb,c835fc38-de99-d064-59d3-e772ccefcf7d/'+dates[i].year+'/'+dates[i].month+'/nairobi.json';
-      }
-      
-      // call the links in a queue and then execute the last function
-      var q = queue();
-      for(var j=1;j<dates.length;j++)
-      {
-        q.defer(d3.json,dates[j].link);
-      }
-      q.await(buildReportCharts); 
-    "
-
-    geography
 
     chartJs = "
+
+      // called on document ready
+      var initChart = function()
+      {
+        var TREND_MONTHS = 3;  // number of months to try to pull into trend
+        var month        = 5;  // starting month
+        var year         = 2014; // starting year
+      
+        var base = '/'; // will need to update this for live development
+        var quotas_link = '/#{group}/geography-quotas';
+
+        // create links for trends by month
+        for ( var i = TREND_MONTHS; i > 0; i-- )
+        {
+          dates[i] = { month:month--, year:year};
+          if(month==0)
+          {
+            year--;
+            month = 12;
+          }
+          dates[i].link = base+'_csv/report/group-tutor_feb_25/00b0a09a-2a9f-baca-2acb-c6264d4247cb,c835fc38-de99-d064-59d3-e772ccefcf7d/'+dates[i].year+'/'+dates[i].month+'/nairobi.json';
+        }
+        
+        // call the links in a queue and then execute the last function
+        var q = queue();
+        for(var j=1;j<dates.length;j++)
+        {
+          q.defer(d3.json,dates[j].link);
+        }
+        q.await(buildReportCharts);
+      }
+
+
 
       var dataset = Array()
       var dates = Array();
@@ -872,6 +875,7 @@ class CsvMachine < Sinatra::Base
           var tmpset = Array();
           for(var county in el.data.fluency.byCounty)
           {
+            if (county == 'all') { continue; }
             var tmp = Object();
             tmp.County = capitalize(county);
             tmp.MonthInt = el.month;
@@ -887,7 +891,15 @@ class CsvMachine < Sinatra::Base
             tmp['Math Score'] = safeRead(el.data.fluency.byCounty[county],'operation','sum')/safeRead(el.data.fluency.byCounty[county],'operation','size');
             if(isNaN(tmp['Math Score'])) delete tmp['Math Score'];
 
-            tmp['Visit Attainment'] = safeRead(el.data.visits.byCounty,county)/safeRead(quota.counties,capitalize(county),'quota')*100;
+            var countyVisits = safeRead(el.data.visits.byCounty,county);
+            var countyQuota = safeRead(quota.counties,capitalize(county),'quota');
+            if (countyVisits == 0 || countyQuota == 0)
+            {
+              tmp['Visit Attainment'] = 0;
+            } else {
+              tmp['Visit Attainment'] = countyVisits / countyQuota * 100;
+            }
+            
             if(isNaN(tmp['Visit Attainment'])) delete tmp['Visit Attainment'];
                           
             dataset.push(tmp);
@@ -1209,7 +1221,7 @@ class CsvMachine < Sinatra::Base
 
           updateMap = function() {
 
-            if ( ! ( window.markers != null && window.map != null && window.geoJsonLayer != null ) ) { return; }
+            if ( window.markers == null || window.map == null || window.geoJsonLayer == null ) { return; }
 
             window.markers.addLayer(window.geoJsonLayer);
             window.map.addLayer(window.markers);
@@ -1219,7 +1231,7 @@ class CsvMachine < Sinatra::Base
 
           $(document).ready( function() {
 
-            #{chartJsOnReady}
+            initChart()
 
             $('table').dataTable( { iDisplayLength :-1, sDom : 't'});
 
@@ -1325,7 +1337,7 @@ class CsvMachine < Sinatra::Base
 
         <h2>
           #{county.capitalize} County Report
-          #{year} #{["","Jan","Feb","Mar","Apr","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
+          #{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
         </h2>
         #{zoneTableHtml}
         
