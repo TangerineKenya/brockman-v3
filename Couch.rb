@@ -1,9 +1,13 @@
 # encoding: utf-8
 
-require 'rest-client'
-require 'xxhash'
+Bundler.require
+
 require './RequestCache.rb'
 require './helpers.rb'
+
+# Interacts with couch db
+# uses dumb caching by default
+# 
 class Couch
 
   def initialize( options = {} )
@@ -14,10 +18,13 @@ class Couch
     @db        = options[:db]    || ""
     @designDoc = options[:designDoc] || ""
 
+    @cache = unless options[:cache].nil? then options[:cache] else true end
+
     @login = options[:login] || ""
 
   end # of initialize
 
+  # Cookie authenticates with AuthSession cookie
   def authenticate( arCookies )
 
     # authenticate session cookie and get userCtx
@@ -50,10 +57,15 @@ class Couch
     requestKey = "#{url}-#{arOptions[:params][:key]}#{arOptions[:seed]}"
     arOptions.delete(:seed)
 
-    response = CacheHandler::tryCache(requestKey, lambda {
-      return JSON.parse RestClient.get( url, requestOptions ).to_s
-    })
 
+
+    if @cache 
+      response = CacheHandler::tryCache(requestKey, lambda {
+        return JSON.parse RestClient.get( url, requestOptions ).to_s
+      })
+    else
+      response = JSON.parse RestClient.get( url, requestOptions ).to_s
+    end
     return response
 
   end # of getRequest
@@ -76,18 +88,26 @@ class Couch
     end
     
 
-    data['keys'] = "" unless data['keys']
+    #data['keys'] = "".to_json unless data['keys']
     arOptions[:seed] = "" unless arOptions[:seed]
     requestKey = "#{url}-#{data['keys']}#{arOptions[:seed]}"
     arOptions.delete(:seed)
 
-    response = CacheHandler::tryCache(requestKey, lambda {
+
+    if @cache
+      response = CacheHandler::tryCache(requestKey, lambda {
+        postResponse = RestClient.post( url, data.to_json, arOptions )
+        return JSON.parse postResponse if json
+        return postResponse
+      })
+    else
       postResponse = RestClient.post( url, data.to_json, arOptions )
-      return JSON.parse postResponse if json
-      return postResponse
-    })
-
-
+      if json
+        response = JSON.parse postResponse
+      else
+        response = postResponse
+      end
+    end
 
     return response
 

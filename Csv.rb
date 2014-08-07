@@ -2,16 +2,43 @@
 
 class Csv
 
-  def initialize( options )
+  CACHE_SIZE = 100
 
-    @name = options[:name]
-    @path = options[:path]
+  def initialize( options )
+    @couch = options[:couch]
+    @name  = options[:name]
+    @path  = options[:path]
+    @cachedResults = {}
+
+  end
+
+
+  def getResult( id )
+
+    # try to get it from the cache
+    if @cachedResults[id].nil? # if the result is there return it
+
+      puts "refreshing cache"
+
+      nextResultIds = @orderedResults.slice!( 0, CACHE_SIZE )
+
+      # fetch next results
+      nextResults = @couch.postRequest({
+        :view => "csvRows",
+        :data => { "keys" => nextResultIds }
+      })
+
+      @cachedResults = Hash[nextResults['rows'].map { |row| [row['id'], row['value'] ] }]
+
+    end
+
+    result = @cachedResults[id]
+    @cachedResults.delete(id)
 
   end
 
   def doWorkflow(options)
 
-    allResultsById  = options[:allResultsById]
     resultsByTripId = options[:resultsByTripId]
 
     machineNames = []
@@ -19,9 +46,16 @@ class Csv
 
     files = getFiles()
 
+    # save all the result ids in order so we can can grab chunks
+    @orderedResults = []
+    resultsByTripId.each { | tripId, resultIds| @orderedResults.concat(resultIds) }
+
+
+    # go through each trip and it's array of resultIds
     resultsByTripId.each { | tripId, resultIds |
 
-      results = resultIds.map { | resultId | allResultsById[resultId] }
+      # make an array of resultIds for this trip
+      results = resultIds.map { | resultId | getResult(resultId) }
 
       row = []
 
