@@ -12,7 +12,8 @@
 require "bundler"
 Bundler.require
 
-require_relative 'helpers.rb'
+require_relative 'utilities/output'
+require_relative 'config'
 require_relative 'routes/init'
 
 $logger = Logger.new "Brockman.log"
