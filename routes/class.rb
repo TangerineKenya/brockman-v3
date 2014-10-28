@@ -1,3 +1,5 @@
+#encoding: utf-8
+
 class Brockman < Sinatra::Base
 
   get '/class/:group/:id' do
@@ -6,7 +8,7 @@ class Brockman < Sinatra::Base
     # Authentication
     #
 
-    authenticate = couch.authenticate(cookies)
+    authenticate = couch.authenticate(cookies[:AuthSession])
 
     unless authenticate[:valid] == true
       $logger.info "Authentication failed"

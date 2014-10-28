@@ -12,12 +12,11 @@ class Brockman < Sinatra::Base
       :local     => $settings[:local]
     })
 
-
     #
     # Authentication
     #
 
-    authenticate = couch.authenticate(cookies)
+    authenticate = couch.authenticate(cookies[:AuthSession])
 
     unless authenticate[:valid] == true
       $logger.info "Authentication failed"
@@ -31,7 +30,8 @@ class Brockman < Sinatra::Base
     # get workflow
     #
 
-    workflow = couch.getRequest({ :document => workflowId })
+    workflow = couch.getRequest({ :doc => workflowId, :parseJson => true })
+
     workflowName = workflow['name']
     $logger.info "Beginning #{workflowName}"
 
@@ -41,8 +41,9 @@ class Brockman < Sinatra::Base
 
     # get all trip Ids associated with workflow
     resultRows = couch.postRequest({ 
-      :view => "resultsByWorkflowId",
-      :data => { "keys" => [workflowId] }
+      :view => "tutorTrips",
+      :data => { "keys" => ["workflow-#{workflowId}"] },
+      :parseJson => true
     })['rows']
 
     $logger.info "Received #{resultRows.length} result ids"

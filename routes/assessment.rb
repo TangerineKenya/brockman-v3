@@ -1,3 +1,7 @@
+#encoding: utf-8
+
+require_relative '../helpers/Csv.rb'
+
 
 # Make CSVs for regular assessments
 class Brockman < Sinatra::Base
@@ -17,7 +21,7 @@ class Brockman < Sinatra::Base
     # Authentication
     #
 
-    authenticate = couch.authenticate(cookies)
+    authenticate = couch.authenticate(cookies[:AuthSession])
 
     unless authenticate[:valid] == true
       $logger.info "Authentication failed"
@@ -29,60 +33,28 @@ class Brockman < Sinatra::Base
 
     assessmentName = JSON.parse(RestClient.get("http://#{$settings[:login]}@#{$settings[:host]}/#{groupPath}/#{assessmentId}"))['name']
 
-    # Get csv rows for klass
-    csvData = {
-      :keys => [assessmentId]
-    }
-
-    csvRowResponse = JSON.parse(RestClient.post("http://#{$settings[:login]}@#{$settings[:host]}/#{groupPath}/_design/ojai/_view/csvRows",csvData.to_json, :content_type => :json,:accept => :json ))
-
+    # Get csv rows for assessment
     columnNames = []
     machineNames = []
     csvRows = []
 
-    puts csvRowResponse.to_json
+    resultIds = couch.postRequest({
+      :view => "results",
+      :data => {"keys"=>[assessmentId]},
+      :parseJson => true
+    })['rows'].map{ |el| el['id'] }
 
-    for result in csvRowResponse['rows']
+    csv = Csv.new({
+      :couch => couch,
+      :name => assessmentName,
+      :path => group
+    })
 
-      row = []
+    file = csv.doAssessment({
+      :resultIds => resultIds
+    })
 
-      for cell in result['value']
-
-        key         = cell['key']
-        value       = cell['value']
-        machineName = cell['machineName']
-        unless machineNames.include?(machineName)
-          machineNames.push machineName
-          columnNames.push key
-        end
-
-        index = machineNames.index(machineName)
-
-        row[index] = value
-
-      end
-
-      csvRows.push row
-
-    end
-
-    csvRows.unshift(columnNames)
-    csvData = ""
-    for row in csvRows
-      csvData += row.map { |title|
-        "\"#{title.to_s.gsub(/"/,'”')}\""
-      }.join(",") + "\n"
-    end
-
-    unless params[:download] == "false"
-      response.headers["Content-Disposition"] = "attachment;filename=#{assessmentName} #{timestamp()}.csv"
-      response.headers["Content-Type"] = "application/octet-stream"
-    end
-
-
-    return csvData
-
-
+    send_file file[:uri], { :filename => "#{group[6..-1]}-#{file[:name]}" }
 
   end
 
