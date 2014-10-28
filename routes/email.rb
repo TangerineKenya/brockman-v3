@@ -1,3 +1,9 @@
+require_relative '../helpers/Couch'
+require_relative '../utilities/countyTranslate'
+require_relative '../utilities/zoneTranslate'
+require_relative '../utilities/timeThis'
+require_relative '../utilities/percentage'
+
 class Brockman < Sinatra::Base
   
   get '/email/:email/:group/:workflowIds/:year/:month/:county.?:format?' do | email, group, workflowIds, year, month, county, format |
@@ -16,10 +22,20 @@ class Brockman < Sinatra::Base
     })
 
     # @hardcode who is formal
-    formalZones = ["waruku","posta","silanga","kayole","gichagi","congo","zimmerman","chokaa"]
+    formalZones = {
+      "waruku"    => true,
+      "posta"     => true,
+      "silanga"   => true,
+      "kayole"    => true,
+      "gichagi"   => true,
+      "congo"     => true,
+      "zimmerman" => true,
+      "chokaa"    => true
+    }
+
     subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" }
 
-    geography = couch.getRequest( { :document => "geography-quotas" } )
+    geography = couch.getRequest( { :doc => "geography-quotas", :parseJson => true } )
     quotasByZones  = {}
     quotasByCounty = {}
     quotaNational = 0
@@ -37,76 +53,136 @@ class Brockman < Sinatra::Base
     byZone = {}
 
     # get trips from month specified
-    monthKey        = "\"year#{year}month#{month}\""
-    tripsFromMonth  = couch.getRequest({ :view => "tutorTrips", :params => { :key => monthKey } } )
+    monthKeys = ["year#{year}month#{month}"]
+    
+    tripsFromMonth  = couch.postRequest({ 
+      :view => "tutorTrips", 
+      :data => { "keys" => monthKeys }, 
+      :params => {"reduce"=>false}, 
+      :categoryCache => true,
+      :parseJson=>true 
+    } )
 
-    tripIdsFromMonth = tripsFromMonth['rows'].map{ |e| e['value'] }
+    tripIds = tripsFromMonth['rows'].map{ |e| e['value'] }
+
 
     # if workflows specified, filter trips to those workflows
     if workflowIds != "all"
-      workflowKeys      = workflowIds.split(",").map{ |s| "workflow-#{s}" }
-      tripsFromWorkflow = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKeys } } )['rows'].map{ |e| e['value'] }
-      tripIds           = tripIdsFromMonth & tripsFromWorkflow # intersection
+
+      workflowKey = workflowIds.split(",").map{ |s| "workflow-#{s}" }
+      allRows = []
+      workflowIds.split(",").each { |workflowId|
+
+        workflowResponse = couch.postRequest({ 
+          :view => "tutorTrips", 
+          :data => { "keys" => ["workflow-#{workflowId}"] }, 
+          :params => { "reduce" => false },
+          :parseJson => true,
+          :categoryCache => true
+        } )
+
+        allRows += workflowResponse['rows']
+      }
+      #byworkflowidresponse = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKey }, :parseJson => true } )
+
+      tripsFromWorkflow = allRows.map{ |e| e['value'] }
+      tripIds           = tripIds & tripsFromWorkflow
+
     end
 
-    # get summaries from trips
     tripKeys      = tripIds.uniq
 
-    tripsResponse = couch.postRequest({ :view => "spirtRotut?group=true", :data => { "keys" => tripKeys } } )
+    # break trip keys into chunks
+    tripKeyChunks = tripKeys.each_slice(TRIP_KEY_CHUNK_SIZE).to_a
 
-    tripRows = tripsResponse['rows']
+    # define scope for result
+    result ||= {}
+    result['fluency']       ||= {}
+    result['visits']        ||= {}
+    result['metBenchmark']  ||= {}
+    result['zonesByCounty'] ||= {}
+    zones = []
+    geojson = []
 
-    #
-    # filter rows
-    #
-
-    tripRows = tripRows.select { | row |
-      longEnough = ( row['value']['maxTime'].to_i - row['value']['minTime'].to_i ) / 1000 / 60 >= 20
-      longEnough
+    # hash for optimization
+    subjectsExists = {}
+    zoneCountyExists = {
+      'all' => {}
     }
 
-    # used for keys for this request
-    monthGroup = "#{group}#{year}#{month}"
 
-    result = {}
+    #
+    # Get chunks of trips and work on the result
+    #
 
-    result['visits'] = CacheHandler::tryCache "email-visits-#{monthGroup}-#{tripKeys.join}", lambda {
-      byZone = {}
-      byCounty = {}
-      national = 0
+    tripKeyChunks.each { | tripKeys |
+
+      # get the real data
+      tripsResponse = couch.postRequest({
+        :view => "spirtRotut",
+        :params => {"group"=>true},
+        :data => { "keys" => tripKeys },
+        :parseJson => true,
+        :cache => true
+      } )
+      tripRows = tripsResponse['rows']
+
+      #
+      # filter rows
+      #
+
+      tripRows = tripRows.select { | row |
+        longEnough = ( row['value']['maxTime'].to_i - row['value']['minTime'].to_i ) / 1000 / 60 >= 20
+        longEnough
+      }
+
+
+      #
+      # post processing
+      #
+
+      result = {
+        'visits'        => {},
+        'fluency'       => {},
+        'metBenchmark'  => {},
+        'zonesByCounty' => {}
+      }
+
+      #
+      # result['visit']
+      #
+      result['visits']['byZone']   = {}
+      result['visits']['byCounty'] = {}
+      result['visits']['national'] = 0
 
       for sum in tripRows
         next if sum['value']['zone'].nil?
         zoneName   = zoneTranslate(sum['value']['zone'].downcase)
         countyName = countyTranslate(sum['value']['county'].downcase)
 
-        byZone[zoneName] = 0 unless byZone[zoneName]
-        byZone[zoneName] += 1
+        result['visits']['byZone'][zoneName] ||= 0
+        result['visits']['byZone'][zoneName] += 1
 
-        byCounty[countyName] = 0 unless byCounty[countyName]
-        byCounty[countyName] += 1
+        result['visits']['byCounty'][countyName] ||= 0
+        result['visits']['byCounty'][countyName] += 1
 
-        national += 1 
+        result['visits']['national'] += 1 
 
       end
-      return {
-        "byZone" => byZone,
-        "byCounty" => byCounty,
-        "national" => national
-      }
-    }
 
 
-    result['fluency'] = CacheHandler::tryCache "email-fluency-#{monthGroup}-#{tripKeys.join}", lambda {
+      #
+      # result['fluency']
+      #
 
-      byZone = {}
-      byCounty = {}
-      national = {}
-      subjects = []
+      result['fluency']['byZone'] = {}
+      result['fluency']['byCounty'] = {}
+      result['fluency']['national'] = {}
+      result['fluency']['subjects'] = []
 
       for sum in tripRows
-
         next if sum['value']['zone'].nil? or sum['value']['itemsPerMinute'].nil?
+
         next if sum['value']['subject'].nil? or sum['value']['subject'] == "" 
 
         zoneName   = zoneTranslate(sum['value']['zone'].downcase)
@@ -116,53 +192,48 @@ class Brockman < Sinatra::Base
 
         subject = sum['value']['subject']
 
-        subjects.push subject if not subjects.include? subject
+        result['fluency']['subjects'].push subject if not result['fluency']['subjects'].include? subject
 
         total = 0
         itemsPerMinute.each { | ipm | total += ipm }
 
-        byZone[zoneName]          = {}        unless byZone[zoneName]
-        byZone[zoneName][subject] = {}        unless byZone[zoneName][subject]
-        byZone[zoneName][subject]['sum']  = 0 unless byZone[zoneName][subject]['sum']
-        byZone[zoneName][subject]['size'] = 0 unless byZone[zoneName][subject]['size']
+        result['fluency']['byZone'][zoneName]                  ||= {}
+        result['fluency']['byZone'][zoneName][subject]         ||= {}
+        result['fluency']['byZone'][zoneName][subject]['sum']  ||= 0
+        result['fluency']['byZone'][zoneName][subject]['size'] ||= 0
 
-        byZone[zoneName][subject]['sum']  += total
-        byZone[zoneName][subject]['size'] += benchmarked
+        result['fluency']['byZone'][zoneName][subject]['sum']  += total
+        result['fluency']['byZone'][zoneName][subject]['size'] += benchmarked
 
-        byCounty[countyName]                  = {} unless byCounty[countyName]
-        byCounty[countyName][subject]         = {} unless byCounty[countyName][subject]
-        byCounty[countyName][subject]['sum']  = 0  unless byCounty[countyName][subject]['sum']
-        byCounty[countyName][subject]['size'] = 0  unless byCounty[countyName][subject]['size']
+        result['fluency']['byCounty'][countyName]                  ||= {}
+        result['fluency']['byCounty'][countyName][subject]         ||= {}
+        result['fluency']['byCounty'][countyName][subject]['sum']  ||= 0
+        result['fluency']['byCounty'][countyName][subject]['size'] ||= 0
 
-        byCounty[countyName][subject]['sum']  += total
-        byCounty[countyName][subject]['size'] += benchmarked
+        result['fluency']['byCounty'][countyName][subject]['sum']  += total
+        result['fluency']['byCounty'][countyName][subject]['size'] += benchmarked
 
-        national                  = {} unless national
-        national[subject]         = {} unless national[subject]
-        national[subject]['sum']  = 0  unless national[subject]['sum']
-        national[subject]['size'] = 0  unless national[subject]['size']
+        result['fluency']['national']                  ||= {}
+        result['fluency']['national'][subject]         ||= {}
+        result['fluency']['national'][subject]['sum']  ||= 0
+        result['fluency']['national'][subject]['size'] ||= 0
 
-        national[subject]['sum']  += total
-        national[subject]['size'] += benchmarked
+        result['fluency']['national'][subject]['sum']  += total
+        result['fluency']['national'][subject]['size'] += benchmarked
 
       end
 
-      subjects = subjects.select  { |x| subjectLegend.keys.include? x }
-      subjects = subjects.sort_by { |x| subjectLegend.keys.index(x) }
+      result['fluency']['subjects'] = result['fluency']['subjects'].select  { |x| subjectLegend.keys.include? x }
+      result['fluency']['subjects'] = result['fluency']['subjects'].sort_by { |x| subjectLegend.keys.index(x) }
 
-      return {
-        "byZone" => byZone,
-        "byCounty" => byCounty,
-        "national" => national,
-        "subjects" => subjects
-      }
-    } # result['fluency']
 
-    result['metBenchmark'] = CacheHandler::tryCache "email-met-benchmark-#{monthGroup}-#{tripKeys.join}", lambda {
+      #
+      # result['metBenchmark']
+      #
 
-      byZone   = {}
-      byCounty = {}
-      national = {}
+      result['metBenchmark']['byZone']   = {}
+      result['metBenchmark']['byCounty'] = {}
+      result['metBenchmark']['national'] = {}
 
       for sum in tripRows
 
@@ -174,31 +245,23 @@ class Brockman < Sinatra::Base
 
         met = sum['value']['metBenchmark']
 
-        byZone[zoneName] = {} unless byZone[zoneName]
-        byZone[zoneName][subject] = 0 unless byZone[zoneName][subject]
-        byZone[zoneName][subject] += met
+        result['metBenchmark']['byZone'][zoneName]          ||= {}
+        result['metBenchmark']['byZone'][zoneName][subject] ||= 0
+        result['metBenchmark']['byZone'][zoneName][subject] += met
 
-        byCounty[countyName] = {} unless byCounty[countyName]
-        byCounty[countyName][subject] = 0 unless byCounty[countyName][subject]
-        byCounty[countyName][subject] += met
+        result['metBenchmark']['byCounty'][countyName]          ||= {}
+        result['metBenchmark']['byCounty'][countyName][subject] ||= 0
+        result['metBenchmark']['byCounty'][countyName][subject] += met
 
-        national[subject] = 0 unless national[subject]
-        national[subject] += met
+        result['metBenchmark']['national'][subject] ||= 0
+        result['metBenchmark']['national'][subject] += met
 
       end
 
-      return {
-        "byZone" => byZone,
-        "byCounty" => byCounty,
-        "national" => national
-      }
+      #
+      # result['zonesByCounty']
+      #
 
-    } # result['metBenchmark']
-
-
-
-    result['zonesByCounty'] = CacheHandler::tryCache "email-zones-by-county-#{monthGroup}-#{tripKeys.join}", lambda {
-      counties = {}
       for sum in tripRows
 
         next if sum['value']['zone'].nil?
@@ -206,20 +269,18 @@ class Brockman < Sinatra::Base
         zoneName   = zoneTranslate(sum['value']['zone'].downcase)
         countyName = countyTranslate(sum['value']['county'].downcase)
 
-        counties[countyName] = [] unless counties[countyName]
-        counties[countyName].push(zoneName) unless counties[countyName].include?(zoneName)
+        result['zonesByCounty'][countyName] ||= []
+        result['zonesByCounty'][countyName].push(zoneName) unless result['zonesByCounty'][countyName].include?(zoneName)
+
       end
-      return counties
     }
 
+    # if there are no zones make sure there are...no zones
     if ! result['zonesByCounty'][county.downcase].nil?
       zones = result['zonesByCounty'][county.downcase].sort_by{|word| word.downcase}
     else
       zones = []
     end
-
-
-
 
     legendHtml = "
       <small>
@@ -267,7 +328,7 @@ class Brockman < Sinatra::Base
 
             sampleTotal = 0
 
-            nonFormalAsterisk = if formalZones.include? zone.downcase then "<b>*</b>" else "" end
+            nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
 
           "
             <tr class='#{if row % 2 == 0 then "even" else "odd" end }'> 
