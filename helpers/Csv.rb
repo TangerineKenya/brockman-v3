@@ -2,9 +2,12 @@
 
 class Csv
 
-  CACHE_SIZE = 100
+  CACHE_SIZE = 500 # how many results to get
+  FILE_BUFFER_SIZE = 32768 # 2 ^ 15 # how long the string will be before write to disk
+  BASE_PATH = File.join( Dir.pwd, "csvs" )
 
   def initialize( options )
+
     @couch = options[:couch]
     @name  = options[:name]
     @path  = options[:path]
@@ -13,21 +16,22 @@ class Csv
   end
 
 
+  # lazyish get from server
   def getResult( id )
 
     # try to get it from the cache
-    if @cachedResults[id].nil? # if the result is there return it
-
-      puts "refreshing cache"
+    if @cachedResults[id].nil? # if the result isn't there get new ones
 
       nextResultIds = @orderedResults.slice!( 0, CACHE_SIZE )
 
       # fetch next results
       nextResults = @couch.postRequest({
         :view => "csvRows",
-        :data => { "keys" => nextResultIds }
+        :data => { "keys" => nextResultIds },
+        :parseJson => true
       })
 
+      # this doesn't keep the old results if there were any... @orderedResults important
       @cachedResults = Hash[nextResults['rows'].map { |row| [row['id'], row['value'] ] }]
 
     end
@@ -102,26 +106,88 @@ class Csv
 
     return { :uri => files[:fileUri], :name => files[:fileName] }
 
-  end
+  end # of doWorkflow
+
+
+  def doAssessment(options)
+
+    resultIds = options[:resultIds]
+
+    columnNames = []
+    machineNames = []
+    indexByMachineName = {}
+
+    files = getFiles()
+
+    # save all the result ids in order so we can can grab chunks
+    @orderedResults = []
+    resultIds.each { |value| @orderedResults.push value }
+
+    resultIds.each { |resultId|
+
+      row = []
+      
+      result = getResult(resultId)
+
+      for cell in result  
+
+        key         = cell['key']
+        value       = cell['value']
+        machineName = cell['machineName']
+
+        unless indexByMachineName[machineName] # Have we seen the machine name before?
+          machineNames.push machineName
+          columnNames.push key
+          indexByMachineName[machineName] = machineNames.index(machineName)
+        end
+
+        index = indexByMachineName[machineName]
+
+        row[index] = value
+
+      end
+
+      files[:body].write row.map { |value| 
+        value = value.to_s if value.class != String
+        result = "\""
+        (0..value.length-1).each { |index|
+          result += if value[index] == '"' then '”' else value[index] end
+        }
+        result += "\""
+      }.join(",") + "\n"
+
+    }
+
+    files[:header].write columnNames.map { |title| "\"#{title.to_s.gsub(/"/,'”')}\"" }.join(",") + "\n"
+
+    files[:header].close()
+    files[:body].close()
+    `cat #{files[:headerUri]} #{files[:bodyUri]} > #{files[:fileUri]}`
+
+    return { :uri => files[:fileUri], :name => files[:fileName] }
+
+  end # of doAssessment
 
   private
 
   def getFiles()
 
+    path = File.join( BASE_PATH, @path )
+
     # ensure group directory
-    unless File.exists?( @path )
-      Dir.mkdir( @path )
+    unless File.exists?( path )
+      Dir.mkdir( path )
     end
 
-    fileName = @name.downcase().gsub( " ", "-" ) + ".csv"
-    fileUri  = File.join( @path, fileName )
+    fileName = @name.downcase().gsub( /[^a-zA-Z0-9]/, "-" ) + ".csv"
+    fileUri  = File.join( path, fileName )
 
-    bodyFileName = @name.downcase().gsub( " ", "-" ) + ".csv.body"
-    bodyUri      = File.join( @path, bodyFileName )
+    bodyFileName = @name.downcase().gsub( /[^a-zA-Z0-9]/, "-" ) + ".csv.body"
+    bodyUri      = File.join( path, bodyFileName )
     bodyFile     = File.open( bodyUri, 'w' )
 
-    headerFileName = @name.downcase().gsub( " ", "-" ) + ".csv.header"
-    headerUri      = File.join( @path, headerFileName )
+    headerFileName = @name.downcase().gsub( /[^a-zA-Z0-9]/, "-" ) + ".csv.header"
+    headerUri      = File.join( path, headerFileName )
     headerFile     = File.open( headerUri, 'w' )
 
     return {
