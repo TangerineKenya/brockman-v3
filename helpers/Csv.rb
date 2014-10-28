@@ -43,13 +43,13 @@ class Csv
 
     machineNames = []
     columnNames  = []
+    indexByMachineName = {}
 
     files = getFiles()
 
     # save all the result ids in order so we can can grab chunks
     @orderedResults = []
     resultsByTripId.each { | tripId, resultIds| @orderedResults.concat(resultIds) }
-
 
     # go through each trip and it's array of resultIds
     resultsByTripId.each { | tripId, resultIds |
@@ -74,12 +74,14 @@ class Csv
           isntFalsy     = ! ( value.nil? || value == "" || value == 0 )
           if isTimeRelated && isntFalsy then value = Time.at(value.to_i / 1000).strftime("%yy %mm %dd %Hh %Mm") end
 
-          unless machineNames.include?(machineName)
+          unless indexByMachineName[machineName] # Have we seen the machine name before?
             machineNames.push machineName
             columnNames.push key
+            indexByMachineName[machineName] = machineNames.index(machineName)
+
           end
 
-          index = machineNames.index(machineName)
+          index = indexByMachineName[machineName]
 
           row[index] = value
 
