@@ -3,8 +3,8 @@
 require_relative '../helpers/Couch'
 require_relative '../utilities/countyTranslate'
 require_relative '../utilities/zoneTranslate'
-require_relative '../utilities/timeThis'
 require_relative '../utilities/percentage'
+require_relative '../utilities/pushUniq'
 
 
 class Brockman < Sinatra::Base
@@ -238,10 +238,7 @@ class Brockman < Sinatra::Base
 
         subject = sum['value']['subject']
 
-        if subjectsExists[subject].nil?
-          result['fluency']['subjects'].push subject
-          subjectsExists[subject] = true
-        end
+        pushUniq result['fluency']['subjects'], subject, subjectsExists
 
         total = 0
         itemsPerMinute.each { | ipm | total += ipm }
