@@ -2,7 +2,6 @@
 
 require 'rest-client'
 require 'json'
-require 'msgpack'
 require_relative "Stash"
 require_relative "../utilities/cloneDeep"
 
