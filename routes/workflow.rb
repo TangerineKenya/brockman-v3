@@ -40,11 +40,15 @@ class Brockman < Sinatra::Base
     #
 
     # get all trip Ids associated with workflow
-    resultRows = couch.postRequest({ 
+    resultRows = couch.getRequest({ 
       :view => "tutorTrips",
-      :data => { "keys" => ["workflow-#{workflowId}"] },
-      :parseJson => true
+      :parseJson => true,
+      :params => {
+        "key" => "\"workflow-#{workflowId}\"",
+        "reduce" => false
+      }
     })['rows']
+
 
     $logger.info "Received #{resultRows.length} result ids"
 
