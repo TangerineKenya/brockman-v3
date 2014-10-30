@@ -1,7 +1,6 @@
 require_relative '../helpers/Couch'
 require_relative '../utilities/countyTranslate'
 require_relative '../utilities/zoneTranslate'
-require_relative '../utilities/timeThis'
 require_relative '../utilities/percentage'
 
 class Brockman < Sinatra::Base
@@ -107,7 +106,6 @@ class Brockman < Sinatra::Base
     # hash for optimization
     subjectsExists = {}
     zoneCountyExists = {
-      'all' => {}
     }
 
 
@@ -136,24 +134,12 @@ class Brockman < Sinatra::Base
         longEnough
       }
 
-
-      #
-      # post processing
-      #
-
-      result = {
-        'visits'        => {},
-        'fluency'       => {},
-        'metBenchmark'  => {},
-        'zonesByCounty' => {}
-      }
-
       #
       # result['visit']
       #
-      result['visits']['byZone']   = {}
-      result['visits']['byCounty'] = {}
-      result['visits']['national'] = 0
+      result['visits']['byZone']   ||= {}
+      result['visits']['byCounty'] ||= {}
+      result['visits']['national'] ||= 0
 
       for sum in tripRows
         next if sum['value']['zone'].nil?
@@ -175,10 +161,10 @@ class Brockman < Sinatra::Base
       # result['fluency']
       #
 
-      result['fluency']['byZone'] = {}
-      result['fluency']['byCounty'] = {}
-      result['fluency']['national'] = {}
-      result['fluency']['subjects'] = []
+      result['fluency']['byZone']   ||= {}
+      result['fluency']['byCounty'] ||= {}
+      result['fluency']['national'] ||= {}
+      result['fluency']['subjects'] ||= []
 
       for sum in tripRows
         next if sum['value']['zone'].nil? or sum['value']['itemsPerMinute'].nil?
@@ -192,7 +178,12 @@ class Brockman < Sinatra::Base
 
         subject = sum['value']['subject']
 
-        result['fluency']['subjects'].push subject if not result['fluency']['subjects'].include? subject
+        pushUniq result['fluency']['subjects'], subject, subjectsExists
+
+        if subjectsExists[subject].nil?
+          result['fluency']['subjects'].push subject
+          subjectsExists[subject] = true
+        end
 
         total = 0
         itemsPerMinute.each { | ipm | total += ipm }
@@ -231,9 +222,9 @@ class Brockman < Sinatra::Base
       # result['metBenchmark']
       #
 
-      result['metBenchmark']['byZone']   = {}
-      result['metBenchmark']['byCounty'] = {}
-      result['metBenchmark']['national'] = {}
+      result['metBenchmark']['byZone']   ||= {}
+      result['metBenchmark']['byCounty'] ||= {}
+      result['metBenchmark']['national'] ||= {}
 
       for sum in tripRows
 
@@ -270,7 +261,8 @@ class Brockman < Sinatra::Base
         countyName = countyTranslate(sum['value']['county'].downcase)
 
         result['zonesByCounty'][countyName] ||= []
-        result['zonesByCounty'][countyName].push(zoneName) unless result['zonesByCounty'][countyName].include?(zoneName)
+        zoneCountyExists[countyName] ||= {}
+        pushUniq result['zonesByCounty'][countyName], zoneName, zoneCountyExists[countyName]
 
       end
     }
