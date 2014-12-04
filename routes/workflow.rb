@@ -27,6 +27,13 @@ class Brockman < Sinatra::Base
     $logger.info "User #{authenticate[:name]} authenticated"
 
     #
+    # get Group settings
+    #
+    groupSettings = couch.getRequest({ :doc => 'settings', :parseJson => true })
+    groupTimeZone = groupSettings['timeZone']    
+
+
+    #
     # get workflow
     #
 
@@ -78,7 +85,8 @@ class Brockman < Sinatra::Base
     })
 
     file = csv.doWorkflow({
-      :resultsByTripId => resultsByTripId
+      :resultsByTripId => resultsByTripId,
+      :groupTimeZone => groupTimeZone
     })
 
     $logger.info "Done, returning value"
