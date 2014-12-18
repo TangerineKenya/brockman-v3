@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
  
-source /root/.bashrc
+source /home/$USER/.bashrc
 
-cd /var/www/brockman
+cd /www/_csv
 
 ruby cron.rb
