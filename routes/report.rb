@@ -66,18 +66,24 @@ class Brockman < Sinatra::Base
 
     byZone = {}
 
+
+    $logger.info "Got geography information"
+
     # get trips from month specified
     monthKeys = ["year#{year}month#{month}"]
 
-    tripsFromMonth  = couch.postRequest({ 
+    tripIds = {} 
+    couch.postRequest({ 
       :view => "tutorTrips", 
       :data => { "keys" => monthKeys }, 
       :params => {"reduce"=>false}, 
       :categoryCache => true,
       :parseJson=>true 
-    } )
+    } )['rows'].each { |e|
+      tripIds[e['value']] = true
+    }
 
-    tripIds = tripsFromMonth['rows'].map{ |e| e['value'] }
+    $logger.info "got trips from month: #{month}"
 
     # if workflows specified, filter trips to those workflows
     if workflowIds != "all"
@@ -86,28 +92,30 @@ class Brockman < Sinatra::Base
       allRows = []
       workflowIds.split(",").each { |workflowId|
 
+        $logger.info "Getting trips from workflow: #{workflowId}"
         workflowResponse = couch.postRequest({ 
           :view => "tutorTrips", 
           :data => { "keys" => ["workflow-#{workflowId}"] }, 
           :params => { "reduce" => false },
           :parseJson => true,
           :categoryCache => true
-        } )
+        } )['rows'].each { |e|
+          tripIds[e['value']] = true
+        }
+        $logger.info "done"
 
-        allRows += workflowResponse['rows']
       }
       #byworkflowidresponse = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKey }, :parseJson => true } )
-
-      tripsFromWorkflow = allRows.map{ |e| e['value'] }
-      tripIds           = tripIds & tripsFromWorkflow
 
     end
 
     # remove duplicates (of which there are many)
-    tripKeys      = tripIds.uniq
+    tripKeys      = tripIds.keys
 
     # break trip keys into chunks
     tripKeyChunks = tripKeys.each_slice(TRIP_KEY_CHUNK_SIZE).to_a
+
+    $logger.info "final trips size is #{tripKeys.length}"
 
     # define scope for result
     result ||= {}
@@ -132,6 +140,8 @@ class Brockman < Sinatra::Base
     #
 
     tripKeyChunks.each { | tripKeys |
+
+      $logger.info "Starting chunk processing. "
 
       # get the real data
       tripsResponse = couch.postRequest({
@@ -336,6 +346,7 @@ class Brockman < Sinatra::Base
 
     }
 
+    puts "Processing done."
     #
     # wrap up processing
     #
@@ -384,7 +395,7 @@ class Brockman < Sinatra::Base
             year--;
             month = 12;
           }
-          dates[i].link = base+'_csv/report/group-tutor_feb_25/00b0a09a-2a9f-baca-2acb-c6264d4247cb,c835fc38-de99-d064-59d3-e772ccefcf7d/'+dates[i].year+'/'+dates[i].month+'/nairobi.json';
+          dates[i].link = base+'_csv/report/#{group}/00b0a09a-2a9f-baca-2acb-c6264d4247cb,c835fc38-de99-d064-59d3-e772ccefcf7d/'+dates[i].year+'/'+dates[i].month+'/nairobi.json';
         }
         
         // call the links in a queue and then execute the last function
@@ -771,7 +782,7 @@ class Brockman < Sinatra::Base
         <script src='http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js'></script>
         <script src='http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js'></script>
         <script src='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/leaflet.markercluster.js'></script>
-        <script src='http://198.211.116.23/javascript/leaflet/leaflet-providers.js'></script>
+        <script src='/javascript/leaflet/leaflet-providers.js'></script>
 
         <script src='http://d3js.org/d3.v3.min.js'></script>
         <script src='http://dimplejs.org/dist/dimple.v2.0.0.min.js'></script>
@@ -811,7 +822,7 @@ class Brockman < Sinatra::Base
             ;
 
 
-            L.Icon.Default.imagePath = 'http://198.211.116.23/images/leaflet'
+            L.Icon.Default.imagePath = 'http://ntp.tangerinecentral.org/images/leaflet'
 
             window.map = new L.Map('map');
 
@@ -862,12 +873,13 @@ class Brockman < Sinatra::Base
       </head>
 
       <body>
-        <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
+        <h1><img style='vertical-align:middle;' src=\"/t/_design/t/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
   
         <label for='year-select'>Year</label>
         <select id='year-select'>
           <option #{"selected" if year == "2013"}>2013</option>
           <option #{"selected" if year == "2014"}>2014</option>
+          <option #{"selected" if year == "2015"}>2015</option>
         </select>
 
         <label for='month-select'>Month</label>

@@ -590,7 +590,7 @@ class Brockman < Sinatra::Base
       </head>
 
       <body>
-        <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> Reimbursement Report - Kenya National Tablet Programme</h1>
+        <h1><img style='vertical-align:middle;' src=\"http://ntp.tangerinecentral.org/db/t/_design/t/images/corner_logo.png\" title=\"Go to main screen.\"> Reimbursement Report - Kenya National Tablet Programme</h1>
   
         <label for='year-select'>Year</label>
         <select id='year-select'>
