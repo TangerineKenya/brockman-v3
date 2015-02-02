@@ -39,8 +39,8 @@ class Stash
     whereIn = options[:keys].map{ |el| "'" + el + "'" }.join(',')
     limit   = "LIMIT #{options[:limit]}" if options[:limit]
     offset  = "OFFSET #{options[:skip]}" if options[:skip]
-    result = @db.execute "SELECT key, value FROM stash WHERE key in (#{whereIn}) #{limit} #{offset}"
-    result = Hash[*result.flatten]
+    sqlResult = @db.execute "SELECT key, value FROM stash WHERE key in (#{whereIn}) #{limit} #{offset}"
+    result = Hash[*sqlResult.flatten]
     return result
 
   end

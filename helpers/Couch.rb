@@ -27,18 +27,18 @@ class Couch
   end # of initialize
 
   def getRequest( arOptions )
-    processRequest( arOptions, lambda { | req | RestClient.get( req['url'], req['options'] ) } )
+    processRequest( arOptions, lambda { | req | RestClient::Request.execute( :method => :get, :url => req['url'], :timeout => 1800, :open_timeout => 30, :headers => req['options'] ) } )  # RestClient.get( req['url'], req['options'] ) } )
   end # of getRequest
 
   # sends a post request to 
   def postRequest( arOptions )
-    processRequest( arOptions, lambda { | req | RestClient.post( req['url'], req['data'], req['options'] ) } )
+    processRequest( arOptions, lambda { | req | RestClient::Request.execute( :method => :post, :url => req['url'], :payload => req['data'], :timeout => 1800, :open_timeout => 30, :headers => req['options'] ) } )   #RestClient.post( req['url'], req['data'], req['options'] ) } )
 
   end # of postRequest
 
   # sends a put request to 
   def putRequest( arOptions )
-    processRequest( arOptions, lambda { | req | RestClient.put( req['url'], req['data'], req['options'] ) } )
+    processRequest( arOptions, lambda { | req | RestClient::Request.execute( :method => :put, :url => req['url'], :payload => req['data'], :timeout => 1800, :open_timeout => 30, :headers => req['options'] ) } )   #RestClient.put( req['url'], req['data'], req['options'] ) } )
   end # of postRequest
 
   def processRequest( arOptions, process )
@@ -82,7 +82,7 @@ class Couch
 
       testReq['data'] = {"keys"=>arOptions[:data]['keys']}.to_json
 
-      testResponse = JSON.parse RestClient.post( testReq['url'], testReq['data'], testReq['options'] )
+      testResponse = JSON.parse RestClient::Request.execute( :method => :post, :url => testReq['url'], :payload => testReq['data'], :timeout => 1800, :open_timeout => 30, :headers => testReq['options'] )   #RestClient.post( testReq['url'], testReq['data'], testReq['options'] )
 
       # `total_rows` gives us a number of rows for the entire view
       # when we ask for a certain key, the number in the key should be the same
@@ -188,7 +188,6 @@ class Couch
     else 
       url = host
     end
-
     return url
 
   end # of getUrl
