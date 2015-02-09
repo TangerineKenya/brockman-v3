@@ -102,7 +102,7 @@ class Brockman < Sinatra::Base
         } )['rows'].each { |e|
           tripIds[e['value']] = true
         }
-        $logger.info "done"
+        $logger.info "done: #{tripIds.length}"
 
       }
       #byworkflowidresponse = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKey }, :parseJson => true } )
@@ -813,7 +813,7 @@ class Brockman < Sinatra::Base
               month   = $('#month-select').val().toLowerCase()
               county  = $('#county-select').val().toLowerCase()
 
-              document.location = 'http://#{$settings[:host]}/_csv/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+county+'.html';
+              document.location = '/_csv/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+county+'.html';
             });
 
             var
@@ -873,7 +873,7 @@ class Brockman < Sinatra::Base
       </head>
 
       <body>
-        <h1><img style='vertical-align:middle;' src=\"/t/_design/t/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
+        <h1><img style='vertical-align:middle;' src=\"/db/t/_design/t/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
   
         <label for='year-select'>Year</label>
         <select id='year-select'>

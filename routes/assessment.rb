@@ -13,7 +13,7 @@ class Brockman < Sinatra::Base
     couch = Couch.new({
       :host      => $settings[:host],
       :login     => $settings[:login],
-      :designDoc => "ojai",
+      :designDoc => $settings[:designDoc],
       :db        => group
     })
 
