@@ -5,7 +5,7 @@ class Brockman < Sinatra::Base
     $logger.info "CSV request - #{groupPath} #{workflowId} #{year} #{month}"
 
     couch = Couch.new({
-      :host      => $settings[:host],
+      :host      => $settings[:dbHost],
       :login     => $settings[:login],
       :designDoc => $settings[:designDoc],
       :db        => groupPath,

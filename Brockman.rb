@@ -29,7 +29,8 @@ class Brockman < Sinatra::Base
       :protection        => { :except => :json_csrf },
       :port              => 3141,
       :cookie_options    => {:domain => "tangerinecentral.org"},
-      :env               => :production
+      :env               => :production,
+      :public_folder     => './public'
 
   get "/" do
     output "csv", false

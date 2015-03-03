@@ -1,5 +1,5 @@
 #encoding: utf-8
-
+require 'date'
 require_relative '../helpers/Couch'
 require_relative '../utilities/countyTranslate'
 require_relative '../utilities/zoneTranslate'
@@ -21,381 +21,77 @@ class Brockman < Sinatra::Base
 
     TRIP_KEY_CHUNK_SIZE = 500
 
-    $logger.info "report - #{group}"
-
     couch = Couch.new({
-      :host      => $settings[:host],
+      :host      => $settings[:dbHost],
       :login     => $settings[:login],
       :designDoc => $settings[:designDoc],
       :db        => group
     })
 
+    subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
 
-    # @hardcode who is formal
-    formalZones = {
-      "waruku"    => true,
-      "posta"     => true,
-      "silanga"   => true,
-      "kayole"    => true,
-      "gichagi"   => true,
-      "congo"     => true,
-      "zimmerman" => true,
-      "chokaa"    => true
-    }
-
-    subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" }  
+    #
+    # get Group settings
+    #
+    groupSettings = couch.getRequest({ :doc => 'settings', :parseJson => true })
+    groupTimeZone = groupSettings['timeZone'] 
 
     #
     # Get quota information
     # 
-
-    geography = couch.getRequest({ :doc => "geography-quotas", :parseJson => true })
-    quotasByZones  = {}
-    quotasByCounty = {}
-    quotaNational = 0
-    
-    geography['counties'].map { | countyName, county |
-      countyName = countyTranslate(countyName.downcase)
-      quotasByCounty[countyName] = county['quota']
-      county['zones'].map { | zone, quota |
-        zone = zoneTranslate(zone)
-        quotasByZones[zone.downcase] = quota
-        quotaNational += quota.to_i
-      }
-    }
-
-    byZone = {}
-
-
-    $logger.info "Got geography information"
-
-    # get trips from month specified
-    monthKeys = ["year#{year}month#{month}"]
-
-    tripIds = {} 
-    couch.postRequest({ 
-      :view => "tutorTrips", 
-      :data => { "keys" => monthKeys }, 
-      :params => {"reduce"=>false}, 
-      :categoryCache => true,
-      :parseJson=>true 
-    } )['rows'].each { |e|
-      tripIds[e['value']] = true
-    }
-
-    $logger.info "got trips from month: #{month}"
-
-    # if workflows specified, filter trips to those workflows
-    if workflowIds != "all"
-
-      workflowKey = workflowIds.split(",").map{ |s| "workflow-#{s}" }
-      allRows = []
-      workflowIds.split(",").each { |workflowId|
-
-        $logger.info "Getting trips from workflow: #{workflowId}"
-        workflowResponse = couch.postRequest({ 
-          :view => "tutorTrips", 
-          :data => { "keys" => ["workflow-#{workflowId}"] }, 
-          :params => { "reduce" => false },
-          :parseJson => true,
-          :categoryCache => true
-        } )['rows'].each { |e|
-          tripIds[e['value']] = true
-        }
-        $logger.info "done: #{tripIds.length}"
-
-      }
-      #byworkflowidresponse = couch.postRequest({ :view => "tutorTrips", :data => { "keys" => workflowKey }, :parseJson => true } )
-
+    begin
+      reportSettings = couch.getRequest({ :doc => "report-aggregate-settings", :parseJson => true })
+      result = couch.getRequest({ :doc => "aggregate-year#{year}month#{month}", :parseJson => true })
+    rescue => e
+      # the doc doesn't already exist
+      puts e
+      return invalidReport()
     end
 
-    # remove duplicates (of which there are many)
-    tripKeys      = tripIds.keys
+    currentCounty         = nil
+    currentCountyName     = params[:county].downcase
 
-    # break trip keys into chunks
-    tripKeyChunks = tripKeys.each_slice(TRIP_KEY_CHUNK_SIZE).to_a
-
-    $logger.info "final trips size is #{tripKeys.length}"
-
-    # define scope for result
-    result ||= {}
-    result['fluency']       ||= {}
-    result['visits']        ||= {}
-    result['metBenchmark']  ||= {}
-    result['zonesByCounty'] ||= {}
-    zones = []
-    geojson = []
-
-    # hash for optimization
-    subjectsExists = {}
-    zoneCountyExists = {
-      'all' => {}
-    }
-
-
-
-
-    #
-    # Get chunks of trips and work on the result
-    #
-
-    tripKeyChunks.each { | tripKeys |
-
-      $logger.info "Starting chunk processing. "
-
-      # get the real data
-      tripsResponse = couch.postRequest({
-        :view => "spirtRotut",
-        :params => { "group" => true },
-        :data => { "keys" => tripKeys },
-        :parseJson => true,
-        :cache => true
-      } )
-      tripRows = tripsResponse['rows']
-
-      #
-      # filter rows
-      #
-
-      tripRows = tripRows.select { | row |
-        longEnough = ( row['value']['maxTime'].to_i - row['value']['minTime'].to_i ) / 1000 / 60 >= 20
-        longEnough
+   
+    #ensure that the county in the URL is valid - if not, select the first
+    if result['visits']['byCounty'][currentCountyName].nil?
+      result['visits']['byCounty'].find { |countyName, county|
+        currentCounty     = county
+        currentCountyName = countyName.downcase
+        true
       }
-
-
-      #
-      # GeoJSON
-      # Separates gps and formats correctly
-      #
-
-
-      unless format == "json" # only do it if we're outputting a map
-
-        tripRows.each { |row|
-
-          next unless row['value']['gpsData']
-          point = row['value']['gpsData']
-
-          minuteDuration = (row['value']['maxTime'].to_i - row['value']['minTime'].to_i) / 1000 / 60
-
-          startDate = Time.new(row['value']['minTime'].to_i / 1000).strftime("%Y %b %d %H:%M")
-
-          point['properties'] = [
-            { 'label' => 'Date',            'value' => startDate },
-            { 'label' => 'Subject',         'value' => subjectLegend[row['value']['subject']] },
-            { 'label' => 'Lesson duration', 'value' => "#{minuteDuration} min." },
-            { 'label' => 'Zone',            'value' => row['value']['zone'] },
-            { 'label' => 'TAC tutor',       'value' => row['value']['user'] },
-            { 'label' => 'Lesson Week',     'value' => row['value']['week'] },
-            { 'label' => 'Lesson Day',      'value' => row['value']['day'] }
-          ]
-
-          geojson.push point
-
-        }
-      end # of format == "json"
-
-      #
-      # post processing
-      #
-
-      #
-      # result['visits']
-      #
-      result['visits']['byZone']   ||= {}
-      result['visits']['byCounty'] ||= {}
-      result['visits']['national'] ||= 0
-
-      for sum in tripRows
-
-        next if sum['value']['zone'].nil?
-        zoneName   = zoneTranslate(sum['value']['zone'].downcase)
-        countyName = countyTranslate(sum['value']['county'].downcase)
-
-        result['visits']['byZone'][zoneName] ||= 0
-        result['visits']['byZone'][zoneName] += 1
-
-        result['visits']['byCounty'][countyName] ||= 0
-        result['visits']['byCounty'][countyName] += 1
-
-        result['visits']['byCounty']['all'] ||= 0
-        result['visits']['byCounty']['all'] += 1
-
-        result['visits']['national'] += 1 
-
-      end
-
-
-      #
-      # result['fluency']
-      #
-
-      result['fluency']['byZone']   ||= {}
-      result['fluency']['byCounty'] ||= {}
-      result['fluency']['national'] ||= {}
-      result['fluency']['subjects'] ||= []
-      subjects = []
-
-      for sum in tripRows
-
-        next if sum['value']['zone'].nil? or sum['value']['itemsPerMinute'].nil?
-        next if sum['value']['subject'].nil? or sum['value']['subject'] == "" 
-
-        zoneName   = zoneTranslate(sum['value']['zone'].downcase)
-        countyName = countyTranslate(sum['value']['county'].downcase)
-        itemsPerMinute = sum['value']['itemsPerMinute']
-        benchmarked    = sum['value']['benchmarked']
-
-        subject = sum['value']['subject']
-
-        pushUniq result['fluency']['subjects'], subject, subjectsExists
-
-        total = 0
-        itemsPerMinute.each { | ipm | total += ipm }
-
-        result['fluency']['byZone'][zoneName]                  ||= {}
-        result['fluency']['byZone'][zoneName][subject]         ||= {}
-        result['fluency']['byZone'][zoneName][subject]['sum']  ||= 0
-        result['fluency']['byZone'][zoneName][subject]['size'] ||= 0
-
-        result['fluency']['byZone'][zoneName][subject]['sum']  += total
-        result['fluency']['byZone'][zoneName][subject]['size'] += benchmarked
-
-        result['fluency']['byCounty'][countyName]                  ||= {}
-        result['fluency']['byCounty'][countyName][subject]         ||= {}
-        result['fluency']['byCounty'][countyName][subject]['sum']  ||= 0
-        result['fluency']['byCounty'][countyName][subject]['size'] ||= 0
-
-        result['fluency']['byCounty'][countyName][subject]['sum']  += total
-        result['fluency']['byCounty'][countyName][subject]['size'] += benchmarked
-
-
-        result['fluency']['byCounty']['all']                  ||= {}
-        result['fluency']['byCounty']['all'][subject]         ||= {}
-        result['fluency']['byCounty']['all'][subject]['sum']  ||= 0
-        result['fluency']['byCounty']['all'][subject]['size'] ||= 0
-
-        result['fluency']['byCounty']['all'][subject]['sum']  += total
-        result['fluency']['byCounty']['all'][subject]['size'] += benchmarked
-
-
-        result['fluency']['national']                  ||= {}
-        result['fluency']['national'][subject]         ||= {}
-        result['fluency']['national'][subject]['sum']  ||= 0
-        result['fluency']['national'][subject]['size'] ||= 0
-
-        result['fluency']['national'][subject]['sum']  += total
-        result['fluency']['national'][subject]['size'] += benchmarked
-
-      end
-
-      #
-      # result['metBenchmark']
-      #
-
-      result['metBenchmark']['byZone']   ||= {}
-      result['metBenchmark']['byCounty'] ||= {}
-      result['metBenchmark']['national'] ||= {}
-
-      for sum in tripRows
-
-        next if sum['value']['zone'].nil? or sum['value']['subject'].nil?
-
-        zoneName   = zoneTranslate(sum['value']['zone'].downcase)
-        countyName = countyTranslate(sum['value']['county'].downcase)
-        subject    = sum['value']['subject'].downcase
-
-        met = sum['value']['metBenchmark']
-
-        result['metBenchmark']['byZone'][zoneName]          ||= {}
-        result['metBenchmark']['byZone'][zoneName][subject] ||= 0
-        result['metBenchmark']['byZone'][zoneName][subject] += met
-
-        result['metBenchmark']['byCounty'][countyName]          ||= {}
-        result['metBenchmark']['byCounty'][countyName][subject] ||= 0
-        result['metBenchmark']['byCounty'][countyName][subject] += met
-
-        result['metBenchmark']['byCounty']['all']          ||= {}
-        result['metBenchmark']['byCounty']['all'][subject] ||= 0
-        result['metBenchmark']['byCounty']['all'][subject] += met
-
-        result['metBenchmark']['national'][subject] ||= 0
-        result['metBenchmark']['national'][subject] += met
-
-      end
-
-      #
-      # result['zonesByCounty']
-      #
-
-      for sum in tripRows
-
-        next if sum['value']['zone'].nil?
-
-        zoneName   = zoneTranslate(sum['value']['zone'].downcase)
-        countyName = countyTranslate(sum['value']['county'].downcase)
-
-        result['zonesByCounty'][countyName] ||= []
-        zoneCountyExists[countyName] ||= {}
-        pushUniq result['zonesByCounty'][countyName], zoneName, zoneCountyExists[countyName]
-
-        result['zonesByCounty']['all'] ||= [] 
-        pushUniq result['zonesByCounty']['all'], zoneName, zoneCountyExists['all']
-      
-      end
-
-    }
-
-    puts "Processing done."
-    #
-    # wrap up processing
-    #
-
-    legendKeys = subjectLegend.keys
-    result['fluency']['subjects'].sort_by { |x| legendKeys.index(x) || 0 }
-
-    if county.downcase == "all"
-      zones = result['visits']['byZone'].keys
-    elsif ! result['zonesByCounty'][county.downcase].nil?
-      zones = result['zonesByCounty'][county.downcase].sort_by{|word| word.downcase}
-    else
-      zones = []
+    else 
+      currentCounty = result['visits']['byCounty'][currentCountyName]
     end
 
-
-
-
-    #
-    # Output
-    #
-
-    # json
-    return result.to_json if format == "json"
-
-    # html&js \/
+    #retrieve a county list for the select and sort it
+    countyList = []
+    result['visits']['byCounty'].map { |countyName, county| countyList.push countyName }
+    countyList.sort!
 
     chartJs = "
+
 
       // called on document ready
       var initChart = function()
       {
         var TREND_MONTHS = 3;  // number of months to try to pull into trend
         var month        = #{month.to_i};  // starting month
-        var year         = 2014; // starting year
+        var year         = #{year.to_i}; // starting year
+
+        var reportMonth = moment(new Date(year, month, 1));
       
-        var base = '/'; // will need to update this for live development
+        var base        = 'http://#{$settings[:dbHost]}/'; // will need to update this for live development
         var quotas_link = '/#{group}/geography-quotas';
 
+        dates[TREND_MONTHS]       = { month:month, year:year};
+        dates[TREND_MONTHS].link  = base+'#{group}/aggregate-year'+year+'month'+month;
+
         // create links for trends by month
-        for ( var i = TREND_MONTHS; i > 0; i-- )
-        {
-          dates[i] = { month:month--, year:year};
-          if(month==0)
-          {
-            year--;
-            month = 12;
-          }
-          dates[i].link = base+'_csv/report/#{group}/00b0a09a-2a9f-baca-2acb-c6264d4247cb,c835fc38-de99-d064-59d3-e772ccefcf7d/'+dates[i].year+'/'+dates[i].month+'/nairobi.json';
+        for ( var i = TREND_MONTHS-1; i > 0; i-- ) {
+          tgtMonth      = reportMonth.clone().subtract((TREND_MONTHS - i + 1), 'months');
+          dates[i]      = { month:tgtMonth.get('month')+1, year:tgtMonth.get('year')};
+          dates[i].link = base+'#{group}/aggregate-year'+dates[i].year+'month'+dates[i].month;
+          console.log('generating date' + i)
         }
         
         // call the links in a queue and then execute the last function
@@ -442,31 +138,30 @@ class Brockman < Sinatra::Base
           }
         }
         
-        var quota = #{geography.to_json};
+        var quota = null //{geography.to_json};
 
         // loop over data and build d3 friendly dataset 
         dates.forEach(function(el){
           var tmpset = Array();
-          for(var county in el.data.fluency.byCounty)
+          for(var county in el.data.visits.byCounty)
           {
-            if (county == 'all') { continue; }
             var tmp = Object();
             tmp.County = capitalize(county);
             tmp.MonthInt = el.month;
             tmp.Year = el.year;
             tmp.Month = months[el.month];
             
-            tmp['English Score'] = safeRead(el.data.fluency.byCounty[county],'english_word','sum')/safeRead(el.data.fluency.byCounty[county],'english_word','size');
+            tmp['English Score'] = safeRead(el.data.visits.byCounty[county].fluency,'english_word','sum')/safeRead(el.data.visits.byCounty[county].fluency,'english_word','size');
             if(isNaN(tmp['English Score'])) delete tmp['English Score'];
 
-            tmp['Kiswahili Score'] = safeRead(el.data.fluency.byCounty[county],'word','sum')/safeRead(el.data.fluency.byCounty[county],'word','size');
+            tmp['Kiswahili Score'] = safeRead(el.data.visits.byCounty[county].fluency,'word','sum')/safeRead(el.data.visits.byCounty[county].fluency,'word','size');
             if(isNaN(tmp['Kiswahili Score'])) delete tmp['Kiswahili Score'];
 
-            tmp['Math Score'] = safeRead(el.data.fluency.byCounty[county],'operation','sum')/safeRead(el.data.fluency.byCounty[county],'operation','size');
+            tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
             if(isNaN(tmp['Math Score'])) delete tmp['Math Score'];
 
-            var countyVisits = safeRead(el.data.visits.byCounty,county);
-            var countyQuota = safeRead(quota.counties,capitalize(county),'quota');
+            var countyVisits = safeRead(el.data.visits.byCounty[county], 'visits');
+            var countyQuota = safeRead(el.data.visits.byCounty[county],'quota');
             if (countyVisits == 0 || countyQuota == 0)
             {
               tmp['Visit Attainment'] = 0;
@@ -604,9 +299,9 @@ class Brockman < Sinatra::Base
 
     "
 
-    #
-    #
-    #
+    
+    
+    
 
 
     row = 0
@@ -617,7 +312,7 @@ class Brockman < Sinatra::Base
             <th>County</th>
             <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a></th>
             <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
-            #{result['fluency']['subjects'].map{ | subject |
+            #{reportSettings['fluency']['subjects'].map{ | subject |
               "<th>#{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
@@ -626,63 +321,82 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{ result['visits']['byCounty'].map{ | county, visits |
+          #{ result['visits']['byCounty'].map{ | countyName, county |
 
-            county = county.downcase
+            countyName      = countyName.downcase
+            visits          = county['visits']
+            quota           = county['quota']
+            sampleTotal     = 0
 
-            met = result['metBenchmark']['byCounty'][county]
+            "
+              <tr>
+                <td>#{countyName.capitalize}</td>
+                <td>#{visits}</td>
+                <td>#{quota}</td>
+                #{reportSettings['fluency']['subjects'].map{ | subject |
+                  sample = county['fluency'][subject]
+                  if sample.nil?
+                    average = "no data"
+                  else
+                    if sample && sample['size'] != 0 && sample['sum'] != 0
+                      sampleTotal += sample['size']
+                      average = ( sample['sum'] / sample['size'] ).round
+                    else
+                      average = '0'
+                    end
 
-            quota = quotasByCounty[county]
-
-            sampleTotal = 0
-
-          "
+                    if subject != "operation"
+                      benchmark = sample['metBenchmark']
+                      percentage = "( #{percentage( sample['size'], benchmark )}% )"
+                    end
+                  end
+                  "<td>#{average} #{percentage}</td>"
+                }.join}
+              </tr>
+            "}.join }
             <tr>
-              <td>#{county.capitalize}</td>
-              <td>#{visits}</td>
-              <td>#{quota}</td>
-              #{result['fluency']['subjects'].map{ | subject |
-                sample = result['fluency']['byCounty'][county][subject]
+              <td>All</td>
+              <td>#{result['visits']['national']['visits']}</td>
+              <td>#{result['visits']['national']['quota']}</td>
+              #{reportSettings['fluency']['subjects'].map{ | subject |
+                sample = result['visits']['national']['fluency'][subject]
                 if sample.nil?
                   average = "no data"
                 else
                   if sample && sample['size'] != 0 && sample['sum'] != 0
-                    sampleTotal += sample['size']
                     average = ( sample['sum'] / sample['size'] ).round
                   else
                     average = '0'
                   end
 
                   if subject != "operation"
-                    benchmark = result['metBenchmark']['byCounty'][county][subject]
+                    benchmark = sample['metBenchmark']
                     percentage = "( #{percentage( sample['size'], benchmark )}% )"
                   end
                 end
                 "<td>#{average} #{percentage}</td>"
               }.join}
             </tr>
-          "}.join }
         </tbody>
       </table>
     "
 
     zoneTableHtml = "
-      <label for='county-select'>Select county</label>
-      <select id='county-select'>
-        <option value='all'>All</option>
-        #{
-          result['zonesByCounty'].map { |county, zones|
-            "<option #{"selected" if county == params[:county]}>#{county}</option>"
-          }.join("")
-        }
-      </select>
+      <label for='county-select'>County</label>
+        <select id='county-select'>
+          #{
+            countyList.map { | countyName |
+              "<option #{"selected" if countyName.downcase == currentCountyName}>#{countyName.capitalize}</option>"
+            }.join("")
+          }
+        </select>
       <table>
         <thead>
           <tr>
             <th>Zone</th>
             <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a></th>
             <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
-            #{result['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
+            #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
               "<th class='sorting'>
                 #{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
@@ -692,31 +406,26 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{zones.map{ |zone|
+          #{result['visits']['byCounty'][currentCountyName]['zones'].map{ | zoneName, zone |
 
             row += 1
 
-            zone = zone.downcase
-
-            next if result['fluency']['byZone'][zone].nil?
-
-            visits = result['visits']['byZone'][zone]
-
-            met = result['metBenchmark']['byZone'][zone]
-
-            quota = quotasByZones[zone]
-
+            zoneName = zoneName.downcase
+            visits = zone['visits']
+            quota = zone['quota']
+            met = zone['fluency']['metBenchmark']
             sampleTotal = 0
-
-            nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
+            
+            # Do we still need this?
+            #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
 
           "
             <tr> 
-              <td>#{zone.capitalize} #{nonFormalAsterisk}</td>
+              <td>#{zoneName.capitalize}</td>
               <td>#{visits}</td>
               <td>#{quota}</td>
-              #{result['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-                sample = result['fluency']['byZone'][zone][subject]
+              #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
+                sample = zone['fluency'][subject]
                 if sample.nil?
                   average = "no data"
                 else
@@ -729,7 +438,7 @@ class Brockman < Sinatra::Base
                   end
 
                   if subject != 'operation'
-                    benchmark = result['metBenchmark']['byZone'][zone][subject]
+                    benchmark = sample['metBenchmark']
                     percentage = "( #{percentage( sample['size'], benchmark )}% )"
                   end
 
@@ -750,9 +459,6 @@ class Brockman < Sinatra::Base
         <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
         <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1 or class 2, out of all of the students assessed for those subjects.</li>
       </ol>
-      <ul style='list-style:none;'>
-        <li><b>*</b> Non-formal</li>
-      </ul>
       </small>
 
     "
@@ -787,6 +493,8 @@ class Brockman < Sinatra::Base
         <script src='http://d3js.org/d3.v3.min.js'></script>
         <script src='http://dimplejs.org/dist/dimple.v2.0.0.min.js'></script>
         <script src='http://d3js.org/queue.v1.min.js'></script>
+
+        <script src='http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js'></script>
 
         <script>
 
@@ -846,7 +554,7 @@ class Brockman < Sinatra::Base
 
             var geojson = {
               'type'     : 'FeatureCollection',
-              'features' : #{geojson.to_json}
+              'features' : {} //{#geojson.to_json}
             };
 
             window.geoJsonLayer = L.geoJson( geojson, {
@@ -873,7 +581,7 @@ class Brockman < Sinatra::Base
       </head>
 
       <body>
-        <h1><img style='vertical-align:middle;' src=\"/db/t/_design/t/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
+        <h1><img style='vertical-align:middle;' src=\"#{$settings[:basePath]}/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
   
         <label for='year-select'>Year</label>
         <select id='year-select'>

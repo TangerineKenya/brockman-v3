@@ -14,7 +14,7 @@ class Brockman < Sinatra::Base
     $logger.info "email - #{group}"
 
     couch = Couch.new({
-      :host      => $settings[:host],
+      :host      => $settings[:dbHost],
       :login     => $settings[:login],
       :designDoc => $settings[:designDoc],
       :db        => group

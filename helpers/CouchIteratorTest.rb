@@ -3,7 +3,7 @@ require_relative 'Couch'
 require_relative 'CouchIterator'
 
 couch = Couch.new({
-  :host      => $settings[:host],
+  :host      => $settings[:dbHost],
   :login     => $settings[:login],
   :designDoc => 'tangerine',
   :db        => 'group-tutor_feb_25'

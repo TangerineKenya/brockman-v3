@@ -11,7 +11,7 @@ class Brockman < Sinatra::Base
     requestId = SecureRandom.base64
 
     couch = Couch.new({
-      :host      => $settings[:host],
+      :host      => $settings[:dbHost],
       :login     => $settings[:login],
       :designDoc => $settings[:designDoc],
       :db        => group
@@ -31,7 +31,7 @@ class Brockman < Sinatra::Base
 
     groupPath = "group-#{group.gsub(/group-/,'')}"
 
-    assessmentName = JSON.parse(RestClient.get("http://#{$settings[:login]}@#{$settings[:host]}/#{groupPath}/#{assessmentId}"))['name']
+    assessmentName = JSON.parse(RestClient.get("http://#{$settings[:login]}@#{$settings[:dbHost]}/#{groupPath}/#{assessmentId}"))['name']
 
     # Get csv rows for assessment
     columnNames = []
