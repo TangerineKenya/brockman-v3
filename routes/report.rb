@@ -521,7 +521,7 @@ class Brockman < Sinatra::Base
               month   = $('#month-select').val().toLowerCase()
               county  = $('#county-select').val().toLowerCase()
 
-              document.location = '/_csv/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+county+'.html';
+              document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+county+'.html';
             });
 
             var
