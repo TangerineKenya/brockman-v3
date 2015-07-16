@@ -159,7 +159,7 @@ dbs.each { |db|
   # Init the data structures based on the school list 
   schoolList['counties'].map { | countyName, county |
     countyName = countyTranslate( countyName.downcase )
-
+    puts "Processing #{countyName}"
     resultTemplate['visits']['byCounty'][countyName]                  ||= {}
     resultTemplate['visits']['byCounty'][countyName]['zones']         ||= {}
     resultTemplate['visits']['byCounty'][countyName]['visits']        ||= 0
@@ -255,9 +255,8 @@ dbs.each { |db|
       aggregateGeoDocId = "report-aggregate-geo-year#{year}month#{month}"
 
       #duplicate the resultTemplate to store this months data
-      result = {}
-      result = cloneDeep(resultTemplate) 
-      #puts result
+      result = cloneDeep(resultTemplate)
+      puts result
       geojson = {}
       geojson['data'] = []
 
@@ -418,6 +417,7 @@ dbs.each { |db|
             result['users']['all'][username]['target']['visits']  += 1
 
           else
+
             result['users']['all'][username]['other'][countyName]                             ||= {}
             result['users']['all'][username]['other'][countyName][zoneName]                   ||= {}
             result['users']['all'][username]['other'][countyName][zoneName]['visits']         ||= 0

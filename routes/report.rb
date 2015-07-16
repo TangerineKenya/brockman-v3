@@ -17,7 +17,7 @@ class Brockman < Sinatra::Base
   get '/report/:group/:workflowIds/:year/:month/:county.:format?' do | group, workflowIds, year, month, county, format |
 
     format = "html" unless format == "json"
-
+    
     safeCounty = county
     county = Base64.urlsafe_decode64 county
 
@@ -46,7 +46,7 @@ class Brockman < Sinatra::Base
     # 
     begin
       reportSettings = couch.getRequest({ :doc => "report-aggregate-settings", :parseJson => true })
-      result = couch.getRequest({ :doc => "aggregate-year#{year}month#{month}", :parseJson => true })
+      result = couch.getRequest({ :doc => "report-aggregate-year#{year}month#{month}", :parseJson => true })
     rescue => e
       # the doc doesn't already exist
       puts e
@@ -54,7 +54,7 @@ class Brockman < Sinatra::Base
     end
 
     currentCounty         = nil
-    currentCountyName     = params[:county].downcase
+    currentCountyName     = county.downcase #params[:county].downcase
 
    
     #ensure that the county in the URL is valid - if not, select the first
@@ -82,7 +82,7 @@ class Brockman < Sinatra::Base
         var TREND_MONTHS = 3;  // number of months to try to pull into trend
         var month        = #{month.to_i};  // starting month
         var year         = #{year.to_i}; // starting year
-        var safeCounty  = #{safeCounty}
+        var safeCounty  = '#{safeCounty}';
 
         var reportMonth = moment(new Date(year, month, 1));
       
@@ -344,6 +344,7 @@ class Brockman < Sinatra::Base
                 <td>#{visits}</td>
                 <td>#{quota}</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
+                  #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
                   if sample.nil?
                     average = "no data"
@@ -396,7 +397,7 @@ class Brockman < Sinatra::Base
         <select id='county-select'>
           #{
             countyList.map { | countyName |
-              "<option #{"selected" if countyName.downcase == currentCountyName}>#{countyName.capitalize}</option>"
+              "<option value='#{Base64.urlsafe_encode64(countyName)}' #{"selected" if countyName.downcase == currentCountyName}>#{countyName.capitalize}</option>"
             }.join("")
           }
         </select>
@@ -530,7 +531,7 @@ class Brockman < Sinatra::Base
             $('select').on('change',function() {
               year    = $('#year-select').val().toLowerCase()
               month   = $('#month-select').val().toLowerCase()
-              county  = Base64.encodeURI($('#county-select').val().toLowerCase())
+              county  = $('#county-select').val(); //Base64.encodeURI($('#county-select').val().toLowerCase())
 
               document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+county+'.html';
             });
