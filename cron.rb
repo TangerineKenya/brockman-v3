@@ -159,7 +159,6 @@ dbs.each { |db|
   # Init the data structures based on the school list 
   schoolList['counties'].map { | countyName, county |
     countyName = countyTranslate( countyName.downcase )
-    puts "Processing #{countyName}"
     resultTemplate['visits']['byCounty'][countyName]                  ||= {}
     resultTemplate['visits']['byCounty'][countyName]['zones']         ||= {}
     resultTemplate['visits']['byCounty'][countyName]['visits']        ||= 0
@@ -256,7 +255,6 @@ dbs.each { |db|
 
       #duplicate the resultTemplate to store this months data
       result = cloneDeep(resultTemplate)
-      puts result
       geojson = {}
       geojson['data'] = []
 
