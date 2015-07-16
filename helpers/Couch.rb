@@ -187,6 +187,7 @@ class Couch
     else 
       url = host
     end
+    #puts url
     return url
 
   end # of getUrl

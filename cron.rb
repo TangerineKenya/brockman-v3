@@ -255,7 +255,9 @@ dbs.each { |db|
       aggregateGeoDocId = "report-aggregate-geo-year#{year}month#{month}"
 
       #duplicate the resultTemplate to store this months data
-      result = cloneDeep(resultTemplate)
+      result = {}
+      result = cloneDeep(resultTemplate) 
+      #puts result
       geojson = {}
       geojson['data'] = []
 
@@ -402,7 +404,12 @@ dbs.each { |db|
           username   = sum['value']['user'].downcase
           
           #puts "---#{countyName}---#{zoneName}---#{sum['id']}---#{username}---"
+          #skip these steps if either the county or zone are no longer in the primary list 
+          next if result['visits']['byCounty'][countyName].nil?
+          next if result['visits']['byCounty'][countyName]['zones'].nil?
           next if result['visits']['byCounty'][countyName]['zones'][zoneName].nil?
+          next if result['visits']['byCounty'][countyName]['zones'][zoneName]['visits'].nil?
+
           result['visits']['byCounty'][countyName]['zones'][zoneName]['trips'].push sum['id']
 
           next if result['users']['all'][username].nil?
@@ -490,6 +497,14 @@ dbs.each { |db|
 
         countyName  = countyTranslate(location['County'].downcase) if !location['County'].nil?
         zoneName    = zoneTranslate(location['Zone'].downcase) if !location['Zone'].nil?
+
+
+        #skip these steps if either the county or zone are no longer in the primary list 
+        next if result['visits']['byCounty'][countyName].nil?
+        next if result['visits']['byCounty'][countyName]['zones'].nil?
+        next if result['visits']['byCounty'][countyName]['compensation'].nil?
+        next if result['visits']['byCounty'][countyName]['zones'][zoneName].nil?
+        next if result['visits']['byCounty'][countyName]['zones'][zoneName]['compensation'].nil?
 
 
         #ensure that the user has a county and zone assigned that exist
