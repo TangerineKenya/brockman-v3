@@ -19,7 +19,12 @@ class Brockman < Sinatra::Base
     format = "html" unless format == "json"
     
     safeCounty = county
-    county = Base64.urlsafe_decode64 county
+    
+    begin
+     county = Base64.urlsafe_decode64 county
+    rescue
+     county = "baringo"
+    end
 
 
     requestId = SecureRandom.base64
@@ -92,14 +97,14 @@ class Brockman < Sinatra::Base
 
 
         dates[TREND_MONTHS]       = { month:month, year:year};
-        dates[TREND_MONTHS].link  = base+'#{group}/geojson-year#{year.to_i}month#{month.to_i}county#{safeCounty}';
+        dates[TREND_MONTHS].link  = base+'#{group}/report-aggregate-year#{year.to_i}month#{month.to_i}';
 
 
         // create links for trends by month
         for ( var i = TREND_MONTHS-1; i > 0; i-- ) {
           tgtMonth      = reportMonth.clone().subtract((TREND_MONTHS - i + 1), 'months');
           dates[i]      = { month:tgtMonth.get('month')+1, year:tgtMonth.get('year')};
-          dates[i].link = base+'#{group}/aggregate-year'+dates[i].year+'month'+dates[i].month;
+          dates[i].link = base+'#{group}/report-aggregate-year'+dates[i].year+'month'+dates[i].month;
           console.log('generating date' + i)
         }
         
@@ -152,6 +157,7 @@ class Brockman < Sinatra::Base
         // loop over data and build d3 friendly dataset 
         dates.forEach(function(el){
           var tmpset = Array();
+	  console.log(el);
           for(var county in el.data.visits.byCounty)
           {
             var tmp = {
@@ -167,8 +173,8 @@ class Brockman < Sinatra::Base
             tmp['Kiswahili Score'] = safeRead(el.data.visits.byCounty[county].fluency,'word','sum')/safeRead(el.data.visits.byCounty[county].fluency,'word','size');
             if(isNaN(tmp['Kiswahili Score'])) { delete tmp['Kiswahili Score'] };
 
-            tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
-            if(isNaN(tmp['Math Score'])) { delete tmp['Math Score'] };
+            //tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
+            //if(isNaN(tmp['Math Score'])) { delete tmp['Math Score'] };
 
             var countyVisits = safeRead(el.data.visits.byCounty[county], 'visits');
             var countyQuota = safeRead(el.data.visits.byCounty[county],'quota');
@@ -188,7 +194,7 @@ class Brockman < Sinatra::Base
         // Build the charts. 
         addChart('English Score', 'English Score', 'Correct Items Per Minute');
         addChart('Kiswahili Score', 'Kiswahili Score', 'Correct Items Per Minute');
-        addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
+        //addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
         addChart('Visit Attainment', 'TAC Tutor Classroom Observations','Percentage');
         $('#charts-loading').remove()
 
@@ -205,7 +211,7 @@ class Brockman < Sinatra::Base
         chartObject = new Object();
         chartObject.container = '#chartContainer'+domid;
         chartObject.height = 300;
-        chartObject.width = 500;
+        chartObject.width = 550;
         chartObject.data =  dataset;
         
         chartObject.plot = function(chart){
@@ -222,7 +228,7 @@ class Brockman < Sinatra::Base
           series.clusterBarGap = 0;
           
           // add the legend
-          chart.addLegend(chartObject.width-75, chartObject.height/2-25, 150,  100, 'left');
+          chart.addLegend(chartObject.width-100, chartObject.height/2-25, 100,  150, 'left');
         };
         
         // titles for x and y axis
@@ -544,7 +550,7 @@ class Brockman < Sinatra::Base
 
             L.Icon.Default.imagePath = 'http://ntp.tangerinecentral.org/images/leaflet'
 
-            window.map = new L.Map('map');
+            //window.map = new L.Map('map');
 
             osm = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
               minZoom: 1,
@@ -597,9 +603,9 @@ class Brockman < Sinatra::Base
   
         <label for='year-select'>Year</label>
         <select id='year-select'>
-          <option #{"selected" if year == "2013"}>2013</option>
           <option #{"selected" if year == "2014"}>2014</option>
           <option #{"selected" if year == "2015"}>2015</option>
+          <option #{"selected" if year == "2016"}>2016</option>
         </select>
 
         <label for='month-select'>Month</label>
@@ -633,10 +639,10 @@ class Brockman < Sinatra::Base
         </h2>
         #{zoneTableHtml}
         
-
+        <!--
         <div id='map-loading'>Please wait. Data loading...</div>
         <div id='map' style='height: 400px'></div>
-
+        -->
         </body>
       </html>
       "
