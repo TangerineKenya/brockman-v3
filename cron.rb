@@ -33,8 +33,8 @@ END
 
 puts header
 
-dbs             = [ 'group-tangent_2m_complete' ] #[ 'group-tangent_6m_complete' ] #'group-tangent_1m_complete', 'group-tangent_2m_complete' ]
-years           = [ 2014, 2015 ]
+dbs             = [ 'group-national_tablet_program' ] #[ 'group-tangent_6m_complete' ] #'group-tangent_1m_complete', 'group-tangent_2m_complete' ]
+years           = [ 2014, 2015, 2016 ]
 months          = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ]
 workflowIds     = ["00b0a09a-2a9f-baca-2acb-c6264d4247cb","c835fc38-de99-d064-59d3-e772ccefcf7d"]
 subjectLegend   = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
@@ -400,8 +400,12 @@ dbs.each { |db|
           zoneName   = zoneTranslate(sum['value']['zone'].downcase)
           countyName = countyTranslate(sum['value']['county'].downcase)
           username   = sum['value']['user'].downcase
-
+          
+          #puts "---#{countyName}---#{zoneName}---#{sum['id']}---#{username}---"
+          next if result['visits']['byCounty'][countyName]['zones'][zoneName].nil?
           result['visits']['byCounty'][countyName]['zones'][zoneName]['trips'].push sum['id']
+
+          next if result['users']['all'][username].nil?
 
           if !result['users'][countyName][zoneName][username].nil?
             result['users']['all'][username]['target']['visits']  += 1
@@ -578,5 +582,6 @@ dbs.each { |db|
 }
 
 puts "\nCron Job Completed - (#{time_diff(Time.now(), cronStart)})"
+
 
 

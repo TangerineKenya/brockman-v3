@@ -42,7 +42,7 @@ class Brockman < Sinatra::Base
     # Get quota information
     # 
     begin
-      result = couch.getRequest({ :doc => "aggregate-year#{year}month#{month}", :parseJson => true })
+      result = couch.getRequest({ :doc => "report-aggregate-year#{year}month#{month}", :parseJson => true })
     rescue => e
       # the doc doesn't already exist
       puts e

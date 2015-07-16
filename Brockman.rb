@@ -28,7 +28,7 @@ class Brockman < Sinatra::Base
       :max_age           => "1728000",
       :protection        => { :except => :json_csrf },
       :port              => 3141,
-      :cookie_options    => {:domain => "tangerinecentral.org"},
+      :cookie_options    => {:domain => "ntp.tangerinecentral.org"},
       :env               => :production,
       :public_folder     => './public'
 

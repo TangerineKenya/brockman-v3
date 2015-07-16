@@ -1,4 +1,5 @@
 #encoding: utf-8
+require 'base64'
 require 'date'
 require_relative '../helpers/Couch'
 require_relative '../utilities/countyTranslate'
@@ -16,6 +17,10 @@ class Brockman < Sinatra::Base
   get '/report/:group/:workflowIds/:year/:month/:county.:format?' do | group, workflowIds, year, month, county, format |
 
     format = "html" unless format == "json"
+
+    safeCounty = county
+    county = Base64.urlsafe_decode64 county
+
 
     requestId = SecureRandom.base64
 
@@ -77,14 +82,18 @@ class Brockman < Sinatra::Base
         var TREND_MONTHS = 3;  // number of months to try to pull into trend
         var month        = #{month.to_i};  // starting month
         var year         = #{year.to_i}; // starting year
+        var safeCounty  = #{safeCounty}
 
         var reportMonth = moment(new Date(year, month, 1));
       
         var base        = 'http://#{$settings[:dbHost]}/'; // will need to update this for live development
         var quotas_link = '/#{group}/geography-quotas';
 
+
+
         dates[TREND_MONTHS]       = { month:month, year:year};
-        dates[TREND_MONTHS].link  = base+'#{group}/aggregate-year'+year+'month'+month;
+        dates[TREND_MONTHS].link  = base+'#{group}/geojson-year#{year.to_i}month#{month.to_i}county#{safeCounty}';
+
 
         // create links for trends by month
         for ( var i = TREND_MONTHS-1; i > 0; i-- ) {
@@ -145,20 +154,21 @@ class Brockman < Sinatra::Base
           var tmpset = Array();
           for(var county in el.data.visits.byCounty)
           {
-            var tmp = Object();
-            tmp.County = capitalize(county);
-            tmp.MonthInt = el.month;
-            tmp.Year = el.year;
-            tmp.Month = months[el.month];
+            var tmp = {
+              County   : capitalize(county),
+              MonthInt : el.month,
+              Year     : el.year,
+              Month    : months[el.month]
+            };
             
             tmp['English Score'] = safeRead(el.data.visits.byCounty[county].fluency,'english_word','sum')/safeRead(el.data.visits.byCounty[county].fluency,'english_word','size');
-            if(isNaN(tmp['English Score'])) delete tmp['English Score'];
+            if(isNaN(tmp['English Score'])) { delete tmp['English Score'] };
 
             tmp['Kiswahili Score'] = safeRead(el.data.visits.byCounty[county].fluency,'word','sum')/safeRead(el.data.visits.byCounty[county].fluency,'word','size');
-            if(isNaN(tmp['Kiswahili Score'])) delete tmp['Kiswahili Score'];
+            if(isNaN(tmp['Kiswahili Score'])) { delete tmp['Kiswahili Score'] };
 
             tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
-            if(isNaN(tmp['Math Score'])) delete tmp['Math Score'];
+            if(isNaN(tmp['Math Score'])) { delete tmp['Math Score'] };
 
             var countyVisits = safeRead(el.data.visits.byCounty[county], 'visits');
             var countyQuota = safeRead(el.data.visits.byCounty[county],'quota');
@@ -484,6 +494,7 @@ class Brockman < Sinatra::Base
         <link rel='stylesheet' type='text/css' href='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/MarkerCluster.css'>
         <link rel='stylesheet' type='text/css' href='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/MarkerCluster.Default.css'>
 
+        <script src='/javascript/base64.js'></script>
         <script src='http://code.jquery.com/jquery-1.11.0.min.js'></script>
         <script src='http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js'></script>
         <script src='http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js'></script>
@@ -519,7 +530,7 @@ class Brockman < Sinatra::Base
             $('select').on('change',function() {
               year    = $('#year-select').val().toLowerCase()
               month   = $('#month-select').val().toLowerCase()
-              county  = $('#county-select').val().toLowerCase()
+              county  = Base64.encodeURI($('#county-select').val().toLowerCase())
 
               document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+county+'.html';
             });

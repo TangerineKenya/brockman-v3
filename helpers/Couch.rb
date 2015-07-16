@@ -23,7 +23,6 @@ class Couch
 
     @login = options[:login] || ""
 
-
   end # of initialize
 
   def getRequest( arOptions )
@@ -169,19 +168,19 @@ class Couch
     options[:db]        = @db        unless options[:db]
     options[:designDoc] = @designDoc unless options[:designDoc]
 
-    raise ArgumentError "getUrl requires protocol and host" if @host.nil? || @protocol.nil?
-    host = "#{@protocol}#{loginString}#{@host}/"
+    raise ArgumentError.new( "getUrl requires protocol(#{@protocol}) and host(#{@host})" ) if @host.nil? || @protocol.nil?
+    host = "#{@protocol}#{loginString}#{@host}"
 
 
     # make url
     if options[:list]
-      raise ArgumentError "getUrl for list requires db, designDoc, and view" if options[:db].nil? || options[:designDoc].nil? || options[:view].nil?
+      raise ArgumentError.new( "getUrl for list requires db, designDoc, and view" ) if options[:db].nil? || options[:designDoc].nil? || options[:view].nil?
       url = File.join host, options[:db], "_design", options[:designDoc], "_list", options[:list], options[:view]
     elsif options[:view]
-      raise ArgumentError "getUrl for view requires db and designDoc" if options[:db].nil? || options[:designDoc].nil?
+      raise ArgumentError.new( "getUrl for view requires db and designDoc" ) if options[:db].nil? || options[:designDoc].nil?
       url = File.join host, options[:db], "_design", options[:designDoc], "_view", options[:view]
     elsif options[:doc]
-      raise ArgumentError "getUrl for document requires db" if options[:db].nil?
+      raise ArgumentError.new( "getUrl for document requires db" ) if options[:db].nil?
       url = File.join host, options[:db], options[:doc]
     elsif options[:db] # @todo this is unreachable if there's a db specified at init
       url = File.join host, options[:db]
