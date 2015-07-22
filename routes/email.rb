@@ -71,8 +71,8 @@ class Brockman < Sinatra::Base
       <small>
 
       <ol>
-        <li id='footer-note-1'><b>Number of classroom visits</b> are defined as Full PRIMR or Best Practices classroom observations that include all forms and all 3 assessments, with at least 20 minutes duration, and took place between 7AM and 2PM of any calendar day during the selected month.</li>
-        <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 and class 2 teachers in each zone.</li>
+        <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
+        <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
         <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
         <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1 or class 2, out of all of the students assessed for those subjects.</li>
       </ol>
@@ -87,6 +87,7 @@ class Brockman < Sinatra::Base
 
     row = 0
     countyTableHtml = "
+      <h2>County Report</h2>
       <table>
         <thead>
           <tr>
@@ -167,7 +168,7 @@ class Brockman < Sinatra::Base
     "
 
     zoneTableHtml = "
-      <label for='county-select'>County</label>
+      <h2>Report for #{county.capitalize} county</h2>
       <table>
         <thead>
           <tr>
@@ -257,7 +258,7 @@ class Brockman < Sinatra::Base
       </html>
 
       "
-    
+
     premailer = Premailer.new(html, 
       :with_html_string => true, 
       :warn_level => Premailer::Warnings::SAFE
@@ -265,9 +266,9 @@ class Brockman < Sinatra::Base
     mailHtml = premailer.to_inline_css
 
     if county.downcase != "all"
-      emailSubject = "Report for #{county.capitalize} county"
+      emailSubject = "Report for #{county.capitalize} County"
     else
-      emailSubject = "County report"
+      emailSubject = "County Report"
     end
 
     if email
