@@ -114,7 +114,7 @@ class Brockman < Sinatra::Base
               <tr>
                 <td>#{countyName.capitalize}</td>
                 <td>#{visits}</td>
-                <td>#{quota}</td>
+                <td><!--#{quota}-->No Data</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
@@ -140,7 +140,7 @@ class Brockman < Sinatra::Base
             <tr>
               <td>All</td>
               <td>#{result['visits']['national']['visits']}</td>
-              <td>#{result['visits']['national']['quota']}</td>
+              <td><!--#{result['visits']['national']['quota']}-->No Data</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
                 sample = result['visits']['national']['fluency'][subject]
                 if sample.nil?
@@ -199,7 +199,7 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{zoneName.capitalize}</td>
               <td>#{visits}</td>
-              <td>#{quota}</td>
+              <td><!--#{quota}-->No Data</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
                 if sample.nil?
