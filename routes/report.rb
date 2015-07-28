@@ -577,7 +577,7 @@ class Brockman < Sinatra::Base
             //  'features' : {} //{#geojson.to_json}
             //};
 
-            window.geoJsonLayer = new L.GeoJSON.AJAX(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{safeCounty}.geojson', {
+            window.geoJsonLayer = new L.GeoJSON.AJAX(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(currentCountyName)}.geojson', {
               onEachFeature: function( feature, layer ) {
                 var html = '';
             
