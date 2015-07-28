@@ -79,7 +79,8 @@ class Brockman < Sinatra::Base
     countyList.sort!
 
     chartJs = "
-
+      
+      var base = 'http://#{$settings[:host]}#{$settings[:basePath]}/'; // will need to update this for live development
 
       // called on document ready
       var initChart = function()
@@ -91,7 +92,6 @@ class Brockman < Sinatra::Base
 
         var reportMonth = moment(new Date(year, month, 1));
       
-        var base        = 'http://#{$settings[:host]}#{$settings[:basePath]}/'; // will need to update this for live development
         var quotas_link = '/#{group}/geography-quotas';
 
 
