@@ -592,7 +592,7 @@ class Brockman < Sinatra::Base
               }
             });
 
-            window.geoJsonLayer.on('data.loaded', window.updateMap);
+            window.geoJsonLayer.on('data:loaded', window.updateMap);
 
             //window.geoJsonLayer = L.geoJson( geojson, {
             //  onEachFeature: function( feature, layer ) {
