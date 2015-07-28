@@ -11,7 +11,7 @@
 # 2. tutorTrips by year+month
 # 3. tutorTrips by workflowId
 # The union of the latter two will give a list of 
-
+require 'base64'
 require_relative 'config.rb'
 require_relative 'helpers/Couch'
 require_relative 'helpers/CouchIterator'
@@ -152,6 +152,10 @@ dbs.each { |db|
   resultTemplate['compensation']['byCounty']   ||= {}
   resultTemplate['compensation']['national']   ||= 0
 
+  # define scope or the geoJSON files
+  geoJSON               ||= {}
+  geoJSON['byCounty']   ||= {}
+
   #
   # Retrieve Shool Locations and Quotas
   #
@@ -186,6 +190,10 @@ dbs.each { |db|
         #init container for users
         resultTemplate['users'][countyName]                   ||= {}
         resultTemplate['users'][countyName][zoneName]         ||= {}
+
+        #init geoJSON Containers
+        geoJSON['byCounty'][countyName]         ||= {}
+        geoJSON['byCounty'][countyName]['data'] ||= []
       }
     } 
   }
@@ -251,7 +259,7 @@ dbs.each { |db|
       subTaskStart = Time.now()
 
       aggregateDocId = "report-aggregate-year#{year}month#{month}"
-      aggregateGeoDocId = "report-aggregate-geo-year#{year}month#{month}"
+      aggregateGeoDocId = "report-aggregate-geo-year#{year}month#{month}-"
 
       #duplicate the resultTemplate to store this months data
       result = cloneDeep(resultTemplate)
@@ -273,20 +281,24 @@ dbs.each { |db|
         result['_rev'] = aggDoc['_rev']
       end
 
-      # Check to see if the aggregate geo doc already exists
-      begin
-        aggGeoDoc = couch.getRequest({ 
-          :doc => "#{aggregateGeoDocId}", 
-          :parseJson => true 
-        })
-      rescue => e
-        # the doc doesn't already exist
-        aggGeoDoc = {}
-      end
+      # Check to see if the aggregate geo doc already exists for each county
+      
+      schoolList['counties'].map { | countyName, county |
+        countyName = countyTranslate( countyName.downcase )
+        begin
+          aggGeoDoc = couch.getRequest({ 
+            :doc => "#{aggregateGeoDocId}-#{Base64.urlsafe_encode64(countyName)}", 
+            :parseJson => true 
+          })
+        rescue => e
+          # the doc doesn't already exist
+          aggGeoDoc = {}
+        end
 
-      if aggGeoDoc.has_key?('_rev')
-        geojson['_rev'] = aggGeoDoc['_rev']
-      end
+        if aggGeoDoc.has_key?('_rev')
+          geoJSON['byCounty'][countyName]['_rev'] = aggGeoDoc['_rev']
+        end
+      }
 
       monthKeys = ["year#{year}month#{month}"]
       tripsFromMonth = couch.postRequest({ 
@@ -369,6 +381,13 @@ dbs.each { |db|
 
         for sum in tripRows
 
+          next if sum['value']['zone'].nil?
+          next if sum['value']['county'].nil? 
+          
+          zoneName   = zoneTranslate(sum['value']['zone'].downcase)
+          countyName = countyTranslate(sum['value']['county'].downcase)
+          username   = sum['value']['user'].downcase
+
           # prepare the geojson doc for the map
           if !sum['value']['gpsData'].nil?
             point = sum['value']['gpsData']
@@ -391,14 +410,10 @@ dbs.each { |db|
               { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
             ]
 
-            geojson['data'].push point
+            geoJSON['byCounty'][countyName]['data'].push point
           end
 
-          next if sum['value']['zone'].nil? 
           
-          zoneName   = zoneTranslate(sum['value']['zone'].downcase)
-          countyName = countyTranslate(sum['value']['county'].downcase)
-          username   = sum['value']['user'].downcase
           
           #puts "---#{countyName}---#{zoneName}---#{sum['id']}---#{username}---"
           #skip these steps if either the county or zone are no longer in the primary list 
@@ -564,12 +579,15 @@ dbs.each { |db|
       })
 
 
-      #
-      # Saving the generated Geo Results back to the server
-      # couch.putRequest({ 
-      #   :doc => "#{aggregateGeoDocId}", 
-      #   :data => geojson 
-      # })
+      geoJSON['byCounty'].map { | countyName, countyData |
+        
+        #Saving the generated Geo Results back to the server
+        couch.putRequest({ 
+          :doc => "#{aggregateGeoDocId}-#{Base64.urlsafe_encode64(countyName)}", 
+          :data => countyData 
+        })
+      
+      }
 
       puts "      Month Completed - (#{time_diff(Time.now(), subTaskStart)})"
 

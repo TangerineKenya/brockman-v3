@@ -91,20 +91,20 @@ class Brockman < Sinatra::Base
 
         var reportMonth = moment(new Date(year, month, 1));
       
-        var base        = 'http://#{$settings[:dbHost]}/'; // will need to update this for live development
+        var base        = 'http://#{$settings[:host]}#{$settings[:basePath]}/'; // will need to update this for live development
         var quotas_link = '/#{group}/geography-quotas';
 
 
 
         dates[TREND_MONTHS]       = { month:month, year:year};
-        dates[TREND_MONTHS].link  = base+'#{group}/report-aggregate-year#{year.to_i}month#{month.to_i}';
+        dates[TREND_MONTHS].link  = base+'reportData/#{group}/report-aggregate-year#{year.to_i}month#{month.to_i}.json';
 
 
         // create links for trends by month
         for ( var i = TREND_MONTHS-1; i > 0; i-- ) {
           tgtMonth      = reportMonth.clone().subtract((TREND_MONTHS - i + 1), 'months');
           dates[i]      = { month:tgtMonth.get('month')+1, year:tgtMonth.get('year')};
-          dates[i].link = base+'#{group}/report-aggregate-year'+dates[i].year+'month'+dates[i].month;
+          dates[i].link = base+'reportData/#{group}/report-aggregate-year'+dates[i].year+'month'+dates[i].month +'.json';
           console.log('generating date' + i)
         }
         
@@ -348,7 +348,7 @@ class Brockman < Sinatra::Base
               <tr>
                 <td>#{countyName.capitalize}</td>
                 <td>#{visits}</td>
-                <td><!--#{quota}-->No Data</td>
+                <td>#{quota}</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
@@ -374,7 +374,7 @@ class Brockman < Sinatra::Base
             <tr>
               <td>All</td>
               <td>#{result['visits']['national']['visits']}</td>
-              <td><!--#{result['visits']['national']['quota']}-->No Data</td>
+              <td>#{result['visits']['national']['quota']}</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
                 sample = result['visits']['national']['fluency'][subject]
                 if sample.nil?
@@ -440,7 +440,7 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{zoneName.capitalize}</td>
               <td>#{visits}</td>
-              <td><!--#{quota}-->No Data</td>
+              <td>#{quota}</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
                 if sample.nil?
@@ -500,6 +500,9 @@ class Brockman < Sinatra::Base
         <link rel='stylesheet' type='text/css' href='http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css'>
         <link rel='stylesheet' type='text/css' href='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/MarkerCluster.css'>
         <link rel='stylesheet' type='text/css' href='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/MarkerCluster.Default.css'>
+        
+
+        <script src='http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js'></script>
 
         <script src='/javascript/base64.js'></script>
         <script src='http://code.jquery.com/jquery-1.11.0.min.js'></script>
@@ -507,12 +510,11 @@ class Brockman < Sinatra::Base
         <script src='http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js'></script>
         <script src='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/leaflet.markercluster.js'></script>
         <script src='/javascript/leaflet/leaflet-providers.js'></script>
+        <script src='/javascript/leaflet/leaflet.ajax.min.js'></script>
 
         <script src='http://d3js.org/d3.v3.min.js'></script>
         <script src='http://dimplejs.org/dist/dimple.v2.0.0.min.js'></script>
         <script src='http://d3js.org/queue.v1.min.js'></script>
-
-        <script src='http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js'></script>
 
         <script>
 
@@ -550,7 +552,7 @@ class Brockman < Sinatra::Base
 
             L.Icon.Default.imagePath = 'http://ntp.tangerinecentral.org/images/leaflet'
 
-            //window.map = new L.Map('map');
+            window.map = new L.Map('map');
 
             osm = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
               minZoom: 1,
@@ -570,15 +572,15 @@ class Brockman < Sinatra::Base
             
             // ready map data
 
-            var geojson = {
-              'type'     : 'FeatureCollection',
-              'features' : {} //{#geojson.to_json}
-            };
+            //var geojson = {
+            //  'type'     : 'FeatureCollection',
+            //  'features' : {} //{#geojson.to_json}
+            //};
 
-            window.geoJsonLayer = L.geoJson( geojson, {
+            window.geoJsonLayer = new L.GeoJSON.AJAX(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{safeCounty}.geojson', {
               onEachFeature: function( feature, layer ) {
                 var html = '';
-
+            
                 if (feature != null && feature.properties != null && feature.properties.length != null )
                 {
                   feature.properties.forEach(function(cell){
@@ -587,8 +589,23 @@ class Brockman < Sinatra::Base
                 }
                 
                 layer.bindPopup( html );
-              } // onEachFeature
-            }); // geoJson
+              }
+            });
+
+            //window.geoJsonLayer = L.geoJson( geojson, {
+            //  onEachFeature: function( feature, layer ) {
+            //    var html = '';
+            //
+            //    if (feature != null && feature.properties != null && feature.properties.length != null )
+            //    {
+            //      feature.properties.forEach(function(cell){
+            //        html += '<b>' + cell.label + '</b> ' + cell.value + '<br>';
+            //      });
+            //    }
+            //    
+            //    layer.bindPopup( html );
+            //  } // onEachFeature
+            //}); // geoJson
 
             window.updateMap();   
 
@@ -639,10 +656,10 @@ class Brockman < Sinatra::Base
         </h2>
         #{zoneTableHtml}
         
-        <!--
+        
         <div id='map-loading'>Please wait. Data loading...</div>
         <div id='map' style='height: 400px'></div>
-        -->
+        
         </body>
       </html>
       "
