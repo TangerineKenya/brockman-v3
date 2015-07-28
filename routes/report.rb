@@ -537,7 +537,7 @@ class Brockman < Sinatra::Base
           mapDataURL['all']
           #{
             countyList.map { | countyName |
-              "mapDataURL['all'].push('base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(countyName.downcase)}.geojson');
+              "mapDataURL['all'].push(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(countyName.downcase)}.geojson');
               "
             }.join("")
           }
