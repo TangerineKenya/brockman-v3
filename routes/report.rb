@@ -592,6 +592,8 @@ class Brockman < Sinatra::Base
               }
             });
 
+            window.geoJsonLayer.on('data.loaded', window.updateMap);
+
             //window.geoJsonLayer = L.geoJson( geojson, {
             //  onEachFeature: function( feature, layer ) {
             //    var html = '';
@@ -606,8 +608,7 @@ class Brockman < Sinatra::Base
             //    layer.bindPopup( html );
             //  } // onEachFeature
             //}); // geoJson
-
-            window.updateMap();   
+   
 
           });
 
