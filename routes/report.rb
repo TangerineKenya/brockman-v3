@@ -526,9 +526,26 @@ class Brockman < Sinatra::Base
 
             window.markers.addLayer(window.geoJsonLayer);
             window.map.addLayer(window.markers);
-            $('#map-loading').remove();
+            $('#map-loading').hide();
 
           };
+
+          var mapDataURL = new Array();
+          mapDataURL['current'] = base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(currentCountyName.downcase)}.geojson';
+          mapDataURL['all'] = new Array();
+
+          mapDataURL['all']
+          #{
+            countyList.map { | countyName |
+              "mapDataURL['all'].push('base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(countyName.downcase)}.geojson');
+              "
+            }.join("")
+          }
+
+          swapMapData = function(){
+            window.geoJsonLayer.refresh(mapDataURL['all']);
+            $('#map-loading').show();
+          }
 
           $(document).ready( function() {
 
@@ -577,7 +594,9 @@ class Brockman < Sinatra::Base
             //  'features' : {} //{#geojson.to_json}
             //};
 
-            window.geoJsonLayer = new L.GeoJSON.AJAX(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(currentCountyName.downcase)}.geojson', {
+
+
+            window.geoJsonLayer = new L.GeoJSON.AJAX(mapDataURL['current'], {
               onEachFeature: function( feature, layer ) {
                 var html = '';
             
@@ -660,6 +679,8 @@ class Brockman < Sinatra::Base
         
         <div id='map-loading'>Please wait. Data loading...</div>
         <div id='map' style='height: 400px'></div>
+
+        <a href='#' onclick='swapMapData(); return false'>View All Data</a>
         
         </body>
       </html>
