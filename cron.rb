@@ -259,7 +259,7 @@ dbs.each { |db|
       subTaskStart = Time.now()
 
       aggregateDocId = "report-aggregate-year#{year}month#{month}"
-      aggregateGeoDocId = "report-aggregate-geo-year#{year}month#{month}-"
+      aggregateGeoDocId = "report-aggregate-geo-year#{year}month#{month}"
 
       #duplicate the resultTemplate to store this months data
       result = cloneDeep(resultTemplate)
