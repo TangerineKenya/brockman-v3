@@ -406,8 +406,8 @@ dbs.each { |db|
               { 'label' => 'Lesson duration', 'value' => "#{minuteDuration} min." },
               { 'label' => 'Zone',            'value' => sum['value']['zone'] },
               { 'label' => 'TAC tutor',       'value' => sum['value']['user'] },
-              { 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
-              { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
+              #{ 'label' => 'Lesson Week',     'value' => sum['value']['week'] }#,
+              #{ 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
             ]
 
             geoJSON['byCounty'][countyName]['data'].push point

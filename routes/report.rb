@@ -639,7 +639,7 @@ class Brockman < Sinatra::Base
       </head>
 
       <body>
-        <h1><img style='vertical-align:middle;' src=\"#{$settings[:basePath]}/images/corner_logo.png\" title=\"Go to main screen.\"> Tusome</h1>
+        <h1><img style='vertical-align:middle;' src=\"#{$settings[:basePath]}/images/corner_logo.png\" title=\"Go to main screen.\"> TUSOME</h1>
   
         <label for='year-select'>Year</label>
         <select id='year-select'>
