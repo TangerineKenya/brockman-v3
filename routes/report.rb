@@ -201,39 +201,40 @@ class Brockman < Sinatra::Base
       }     
 
     
-      function addChart(variable, title, yaxis)
+      function addChart(variable, title, xaxis)
       {
         // create the element that the chart lives in
         var domid = (new Date()).getTime();
-        $('#charts').append('<div class=\"chart\"><h2>'+title+'</h2><div id=\"chartContainer'+domid+'\" /></div>');
+        $('#charts').append('<div class=\"chart\"><h2 style=\"text-align:center;\">'+title+'</h2><div id=\"chartContainer'+domid+'\" /></div>');
 
         // start building chart object to pass to render function
         chartObject = new Object();
         chartObject.container = '#chartContainer'+domid;
-        chartObject.height = 300;
-        chartObject.width = 550;
+        chartObject.height = 650;
+        chartObject.width = 450;
         chartObject.data =  dataset;
         
         chartObject.plot = function(chart){
 
           // setup x, y and series
-          var x = chart.addCategoryAxis('x', ['County','Month']);
-          x.addOrderRule('County');
-          x.addGroupOrderRule('MonthInt');
+          var y = chart.addCategoryAxis('y', ['County','Month']);
+          y.addOrderRule('County');
+          y.addGroupOrderRule('MonthInt');
 
-          var y = chart.addMeasureAxis('y', variable);
+          var x = chart.addMeasureAxis('x', variable);
 
           var series = chart.addSeries(['Month'], dimple.plot.bar);
           series.addOrderRule('MonthInt');
           series.clusterBarGap = 0;
           
           // add the legend
-          chart.addLegend(chartObject.width-100, chartObject.height/2-25, 100,  150, 'left');
+          //chart.addLegend(chartObject.width-100, chartObject.height/2-25, 100,  150, 'left');
+          chart.addLegend(60, 10, 400, 20, 'right');
         };
         
         // titles for x and y axis
-        chartObject.xAxis = 'County';
-        chartObject.yAxis = yaxis;
+        chartObject.yAxis = 'County';
+        chartObject.xAxis = xaxis;
         
         // show hover tooltips
         chartObject.showHover = true;
@@ -245,10 +246,10 @@ class Brockman < Sinatra::Base
         var svg = dimple.newSvg(chart.container, chart.width, chart.height);
 
         //set white background for svg - helps with conversion to png
-        svg.append('rect').attr('x', 0).attr('y', 0).attr('width', chart.width).attr('height', chart.height).attr('fill', 'white');
+        //svg.append('rect').attr('x', 0).attr('y', 0).attr('width', chart.width).attr('height', chart.height).attr('fill', 'white');
           
         var dimpleChart = new dimple.chart(svg, chart.data);
-        dimpleChart.setBounds(50, 50, chart.width-150, chart.height-100);
+        dimpleChart.setBounds(90, 30, chart.width-100, chart.height-100);
         chartObject.plot(dimpleChart);
 
         if(!chart.showHover)
@@ -260,14 +261,14 @@ class Brockman < Sinatra::Base
         dimpleChart.draw();
         
         // x axis title and redraw bottom line after removing tick marks
-        dimpleChart.axes[0].titleShape.text(chartObject.xAxis).style({'font-size':'11px', 'stroke': '#555555', 'stroke-width':'0.2px'});
-        dimpleChart.axes[0].shapes.selectAll('line').remove();
-        dimpleChart.axes[0].shapes.selectAll('path').attr('d','M50,1V0H'+String(chart.width-80)+'V1').style('stroke','#555555');
-        if(!dimpleChart.axes[1].hidden)
+        dimpleChart.axes[1].titleShape.text(chartObject.xAxis).style({'font-size':'11px', 'stroke': '#555555', 'stroke-width':'0.2px'});
+        dimpleChart.axes[1].shapes.selectAll('line').remove();
+        dimpleChart.axes[1].shapes.selectAll('path').attr('d','M90,1V0H'+String(chart.width-10)+'V1').style('stroke','#555555');
+        if(!dimpleChart.axes[0].hidden)
         {
           // update y axis
-          dimpleChart.axes[1].titleShape.text(chartObject.yAxis).style({'font-size':'11px', 'stroke': '#555555', 'stroke-width':'0.2px'});
-          dimpleChart.axes[1].gridlineShapes.selectAll('line').remove();
+          dimpleChart.axes[0].titleShape.text(chartObject.yAxis).style({'font-size':'11px', 'stroke': '#555555', 'stroke-width':'0.2px'});
+          //dimpleChart.axes[0].gridlineShapes.selectAll('line').remove();
         }
         return dimpleChart;
       }
@@ -326,7 +327,8 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a></th>
+            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
             <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].map{ | subject |
               "<th>#{subjectLegend[subject]}<br>
@@ -347,7 +349,7 @@ class Brockman < Sinatra::Base
             "
               <tr>
                 <td>#{countyName.capitalize}</td>
-                <td>#{visits}</td>
+                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
                 <td>#{quota}</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
@@ -373,7 +375,7 @@ class Brockman < Sinatra::Base
             "}.join }
             <tr>
               <td>All</td>
-              <td>#{result['visits']['national']['visits']}</td>
+              <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
               <td>#{result['visits']['national']['quota']}</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
                 sample = result['visits']['national']['fluency'][subject]
@@ -411,7 +413,8 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>Zone</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a></th>
+            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
             <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
               "<th class='sorting'>
@@ -439,7 +442,7 @@ class Brockman < Sinatra::Base
           "
             <tr> 
               <td>#{zoneName.capitalize}</td>
-              <td>#{visits}</td>
+              <td>#{visits} ( #{percentage( quota, visits )}% )</td>
               <td>#{quota}</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
@@ -636,7 +639,7 @@ class Brockman < Sinatra::Base
       </head>
 
       <body>
-        <h1><img style='vertical-align:middle;' src=\"#{$settings[:basePath]}/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
+        <h1><img style='vertical-align:middle;' src=\"#{$settings[:basePath]}/images/corner_logo.png\" title=\"Go to main screen.\"> Tusome</h1>
   
         <label for='year-select'>Year</label>
         <select id='year-select'>

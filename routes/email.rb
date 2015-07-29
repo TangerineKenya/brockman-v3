@@ -92,7 +92,8 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a></th>
+            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
             <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].map{ | subject |
               "<th>#{subjectLegend[subject]}<br>
@@ -113,8 +114,8 @@ class Brockman < Sinatra::Base
             "
               <tr>
                 <td>#{countyName.capitalize}</td>
-                <td>#{visits}</td>
-                <td>#{quota}</td>
+                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                <td>#{quota} ( #{percentage( quota, visits )}% )</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
@@ -139,7 +140,7 @@ class Brockman < Sinatra::Base
             "}.join }
             <tr>
               <td>All</td>
-              <td>#{result['visits']['national']['visits']}</td>
+              <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
               <td>#{result['visits']['national']['quota']}</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
                 sample = result['visits']['national']['fluency'][subject]
@@ -173,7 +174,8 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>Zone</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a></th>
+            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
             <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
               "<th class='sorting'>
@@ -250,7 +252,7 @@ class Brockman < Sinatra::Base
         </head>
 
         <body>
-          <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> Kenya National Tablet Programme</h1>
+          <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> Tusome</h1>
 
           #{contentHtml}
           <p><a href='http://ntp.tangerinecentral.org/_csv/report/#{group}/#{workflowIds}/#{year}/#{month}/#{county}.html'>View map and details</a></p>
