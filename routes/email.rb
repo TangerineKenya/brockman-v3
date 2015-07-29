@@ -115,7 +115,7 @@ class Brockman < Sinatra::Base
               <tr>
                 <td>#{countyName.capitalize}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                <td>#{quota} ( #{percentage( quota, visits )}% )</td>
+                <td>#{quota}</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
@@ -200,7 +200,7 @@ class Brockman < Sinatra::Base
           "
             <tr> 
               <td>#{zoneName.capitalize}</td>
-              <td>#{visits}</td>
+              <td>#{visits} ( #{percentage( quota, visits )}% )</td>
               <td>#{quota}</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
