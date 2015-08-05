@@ -98,11 +98,16 @@ class Brockman < Sinatra::Base
 
         dates[TREND_MONTHS]       = { month:month, year:year};
         dates[TREND_MONTHS].link  = base+'reportData/#{group}/report-aggregate-year#{year.to_i}month#{month.to_i}.json';
-
-
+        
+        var skipMonths = [-1,0,4,8,11,12];
+        var skippedMonths = 0;
         // create links for trends by month
         for ( var i = TREND_MONTHS-1; i > 0; i-- ) {
-          tgtMonth      = reportMonth.clone().subtract((TREND_MONTHS - i + 1), 'months');
+          tgtMonth      = reportMonth.clone().subtract((TREND_MONTHS - i + 1 + skippedMonths), 'months');
+          if(skipMonths.indexOf(tgtMonth.get('month')+1) != -1){
+            tgtMonth = tgtMonth.subtract(++skippedMonths, 'months');
+          }
+
           dates[i]      = { month:tgtMonth.get('month')+1, year:tgtMonth.get('year')};
           dates[i].link = base+'reportData/#{group}/report-aggregate-year'+dates[i].year+'month'+dates[i].month +'.json';
           console.log('generating date' + i)
@@ -329,7 +334,6 @@ class Brockman < Sinatra::Base
             <th>County</th>
             <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].map{ | subject |
               "<th>#{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
@@ -348,9 +352,8 @@ class Brockman < Sinatra::Base
 
             "
               <tr>
-                <td>#{countyName.capitalize}</td>
+                <td>#{titleize(countyName)}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                <td>#{quota}</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
@@ -376,7 +379,6 @@ class Brockman < Sinatra::Base
             <tr>
               <td>All</td>
               <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
-              <td>#{result['visits']['national']['quota']}</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
                 sample = result['visits']['national']['fluency'][subject]
                 if sample.nil?
@@ -405,7 +407,7 @@ class Brockman < Sinatra::Base
         <select id='county-select'>
           #{
             countyList.map { | countyName |
-              "<option value='#{Base64.urlsafe_encode64(countyName)}' #{"selected" if countyName.downcase == currentCountyName}>#{countyName.capitalize}</option>"
+              "<option value='#{Base64.urlsafe_encode64(countyName)}' #{"selected" if countyName.downcase == currentCountyName}>#{titleize(countyName)}</option>"
             }.join("")
           }
         </select>
@@ -415,7 +417,6 @@ class Brockman < Sinatra::Base
             <th>Zone</th>
             <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
               "<th class='sorting'>
                 #{subjectLegend[subject]}<br>
@@ -443,7 +444,6 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{zoneName.capitalize}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-              <td>#{quota}</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
                 if sample.nil?
@@ -674,7 +674,7 @@ class Brockman < Sinatra::Base
         <br>
 
         <h2>
-          #{county.capitalize} County Report
+          #{titleize(currentCountyName)} County Report
           #{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]}
         </h2>
         #{zoneTableHtml}
