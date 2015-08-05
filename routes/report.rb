@@ -79,7 +79,12 @@ class Brockman < Sinatra::Base
     countyList.sort!
 
     chartJs = "
-      
+      function titleize(str){
+        return str.replace(/\w\S*/g, function(txt) {
+          return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        }).replace(/apbet/gi, 'APBET');
+      }
+
       var base = 'http://#{$settings[:host]}#{$settings[:basePath]}/'; // will need to update this for live development
 
       // called on document ready
@@ -124,7 +129,9 @@ class Brockman < Sinatra::Base
 
 
 
-      var dataset = Array()
+      var datasetScores = Array()
+      var datasetObservationsPublic = Array();
+      var datasetObservationsAPBET = Array();
       var dates = Array();
       var months = {
         1:'January',
@@ -165,12 +172,30 @@ class Brockman < Sinatra::Base
 	  console.log(el);
           for(var county in el.data.visits.byCounty)
           {
+            var tmpCounty = titleize(county);
             var tmp = {
-              County   : capitalize(county),
+              County   : tmpCounty,
               MonthInt : el.month,
               Year     : el.year,
               Month    : months[el.month]
             };
+            
+            var tmpVisit = {};
+            var countyVisits = safeRead(el.data.visits.byCounty[county], 'visits');
+            var countyQuota = safeRead(el.data.visits.byCounty[county],'quota');
+            if (countyVisits == 0 || countyQuota == 0){
+              tmpVisit['Visit Attainment'] = 0;
+            } else {
+              tmpVisit['Visit Attainment'] = countyVisits / countyQuota * 100;
+            }
+
+            if(tmpCounty.search(/apbet/i) == -1){
+              datasetObservationsPublic.push($.extend({}, tmp, tmpVisit));
+            } else {
+              datasetObservationsAPBET.push($.extend({}, tmp, tmpVisit));
+            }
+
+            if(isNaN(tmpVisit['Visit Attainment'])) delete tmpVisit['Visit Attainment'];
             
             tmp['English Score'] = safeRead(el.data.visits.byCounty[county].fluency,'english_word','sum')/safeRead(el.data.visits.byCounty[county].fluency,'english_word','size');
             if(isNaN(tmp['English Score'])) { delete tmp['English Score'] };
@@ -181,32 +206,24 @@ class Brockman < Sinatra::Base
             //tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
             //if(isNaN(tmp['Math Score'])) { delete tmp['Math Score'] };
 
-            var countyVisits = safeRead(el.data.visits.byCounty[county], 'visits');
-            var countyQuota = safeRead(el.data.visits.byCounty[county],'quota');
-            if (countyVisits == 0 || countyQuota == 0)
-            {
-              tmp['Visit Attainment'] = 0;
-            } else {
-              tmp['Visit Attainment'] = countyVisits / countyQuota * 100;
-            }
             
-            if(isNaN(tmp['Visit Attainment'])) delete tmp['Visit Attainment'];
                           
-            dataset.push(tmp);
+            datasetScores.push(tmp);
           }
         })
         
         // Build the charts. 
-        addChart('English Score', 'English Score', 'Correct Items Per Minute');
-        addChart('Kiswahili Score', 'Kiswahili Score', 'Correct Items Per Minute');
+        addChart(datasetScores, 'English Score', 'English Score', 'Correct Items Per Minute');
+        addChart(datasetScores, 'Kiswahili Score', 'Kiswahili Score', 'Correct Items Per Minute');
         //addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
-        addChart('Visit Attainment', 'TAC Tutor Classroom Observations','Percentage');
+        addChart(datasetObservationsPublic, 'Visit Attainment', 'Classroom Observations (Public)','Percentage');
+        addChart(datasetObservationsAPBET, 'Visit Attainment', 'Classroom Observations (APBET)','Percentage');
         $('#charts-loading').remove()
 
       }     
 
     
-      function addChart(variable, title, xaxis)
+      function addChart(dataset, variable, title, xaxis)
       {
         // create the element that the chart lives in
         var domid = (new Date()).getTime();
