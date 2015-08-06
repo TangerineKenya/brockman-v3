@@ -387,35 +387,7 @@ dbs.each { |db|
           zoneName   = zoneTranslate(sum['value']['zone'].downcase)
           countyName = countyTranslate(sum['value']['county'].downcase)
           username   = sum['value']['user'].downcase
-
-          # prepare the geojson doc for the map
-          if !sum['value']['gpsData'].nil?
-            point = sum['value']['gpsData']
-
-            minuteDuration = (sum['value']['maxTime'].to_i - sum['value']['minTime'].to_i ) / 1000 / 60 / 3600 #TODO: check back on the validity of this
-            
-            if !groupTimeZone.nil?
-              startDate = Time.at(sum['value']['minTime'].to_i / 1000).strftime("%Y %b %d %H:%M")
-            else 
-              startDate = Time.at(sum['value']['minTime'].to_i / 1000).strftime("%Y %b %d %H:%M")
-            end
-
-            point['properties'] = [
-              { 'label' => 'Date',            'value' => startDate },
-              { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
-              { 'label' => 'Lesson duration', 'value' => "#{minuteDuration} min." },
-              { 'label' => 'Zone',            'value' => sum['value']['zone'] },
-              { 'label' => 'TAC tutor',       'value' => sum['value']['user'] },
-              #{ 'label' => 'Lesson Week',     'value' => sum['value']['week'] }#,
-              #{ 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
-            ]
-
-            geoJSON['byCounty'][countyName]['data'].push point
-          end
-
           
-          
-          #puts "---#{countyName}---#{zoneName}---#{sum['id']}---#{username}---"
           #skip these steps if either the county or zone are no longer in the primary list 
           next if result['visits']['byCounty'][countyName].nil?
           next if result['visits']['byCounty'][countyName]['zones'].nil?
@@ -445,6 +417,36 @@ dbs.each { |db|
           result['visits']['national']['visits']                                  += 1
           result['visits']['byCounty'][countyName]['visits']                      += 1 
           result['visits']['byCounty'][countyName]['zones'][zoneName]['visits']   += 1
+
+
+          # 
+          # prepare the geojson doc for the map
+          # 
+          
+          if !sum['value']['gpsData'].nil?
+            point = sum['value']['gpsData']
+
+            minuteDuration = (sum['value']['maxTime'].to_i - sum['value']['minTime'].to_i ) / 1000 / 60 / 3600 #TODO: check back on the validity of this
+            
+            if !groupTimeZone.nil?
+              startDate = Time.at(sum['value']['minTime'].to_i / 1000).getlocal(groupTimeZone).strftime("%Y %b %d %H:%M")
+            else 
+              startDate = Time.at(sum['value']['minTime'].to_i / 1000).strftime("%Y %b %d %H:%M")
+            end
+
+            point['properties'] = [
+              { 'label' => 'Date',            'value' => startDate },
+              { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
+              { 'label' => 'Zone',            'value' => titleize(sum['value']['zone'].downcase) },
+              { 'label' => 'School',          'value' => titleize(sum['value']['school'].downcase) },
+              { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) }#,
+              #{ 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
+              #{ 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
+            ]
+
+            geoJSON['byCounty'][countyName]['data'].push point
+          end
+
 
           #
           # process fluency data
