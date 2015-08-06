@@ -349,10 +349,10 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
             #{reportSettings['fluency']['subjects'].map{ | subject |
-              "<th>#{subjectLegend[subject]}<br>
+              "<th class='custSort'>#{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
@@ -389,7 +389,7 @@ class Brockman < Sinatra::Base
                       percentage = "( #{percentage( sample['size'], benchmark )}% )"
                     end
                   end
-                  "<td>#{average} #{percentage}</td>"
+                  "<td>#{average} <span>#{percentage}</span></td>"
                 }.join}
               </tr>
             "}.join }
@@ -412,7 +412,7 @@ class Brockman < Sinatra::Base
                     percentage = "( #{percentage( sample['size'], benchmark )}% )"
                   end
                 end
-                "<td>#{average} #{percentage}</td>"
+                "<td>#{average} <span>#{percentage}</span></td>"
               }.join}
             </tr>
         </tbody>
@@ -432,10 +432,10 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>Zone</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
             #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-              "<th class='sorting'>
+              "<th class='custSort'>
                 #{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
@@ -481,7 +481,7 @@ class Brockman < Sinatra::Base
 
                 end
 
-                "<td>#{average} #{percentage}</td>"
+                "<td>#{average} <span>#{percentage}</span></td>"
               }.join}
 
             </tr>
@@ -566,12 +566,37 @@ class Brockman < Sinatra::Base
             window.geoJsonLayer.refresh(mapDataURL['all']);
             $('#map-loading').show();
           }
-
+          
+          //init a datatables advanced sort plugin
+            jQuery.extend( jQuery.fn.dataTableExt.oSort, {
+                'num-html-pre': function ( a ) {
+                    var x = String(a).replace( /<[\\s\\S]*?>/g, '' );
+                    if(String(a).indexOf('no data')!= -1){
+                      x = 0;
+                    }
+                    return parseFloat( x );
+                },
+             
+                'num-html-asc': function ( a, b ) {
+                    return ((a < b) ? -1 : ((a > b) ? 1 : 0));
+                },
+             
+                'num-html-desc': function ( a, b ) {
+                    return ((a < b) ? 1 : ((a > b) ? -1 : 0));
+                }
+            } );
           $(document).ready( function() {
 
             initChart()
+            
 
-            $('table').dataTable( { iDisplayLength :-1, sDom : 't'});
+            $('table').dataTable( { 
+              iDisplayLength :-1, 
+              sDom : 't',
+              aoColumnDefs: [
+                 { sType: 'num-html', aTargets: [1,2,3] }
+               ]
+            });
 
             $('select').on('change',function() {
               year    = $('#year-select').val().toLowerCase()

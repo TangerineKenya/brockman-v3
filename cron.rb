@@ -439,9 +439,9 @@ dbs.each { |db|
               { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
               { 'label' => 'Zone',            'value' => titleize(sum['value']['zone'].downcase) },
               { 'label' => 'School',          'value' => titleize(sum['value']['school'].downcase) },
-              { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) }#,
-              #{ 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
-              #{ 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
+              { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) },
+              { 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
+              { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
             ]
 
             geoJSON['byCounty'][countyName]['data'].push point
