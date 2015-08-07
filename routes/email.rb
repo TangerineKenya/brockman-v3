@@ -92,11 +92,10 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].map{ | subject |
-              "<th>#{subjectLegend[subject]}<br>
+              "<th class='custSort'>#{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
@@ -113,9 +112,8 @@ class Brockman < Sinatra::Base
 
             "
               <tr>
-                <td>#{countyName.capitalize}</td>
+                <td>#{titleize(countyName)}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                <td>#{quota}</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
                   sample = county['fluency'][subject]
@@ -134,14 +132,13 @@ class Brockman < Sinatra::Base
                       percentage = "( #{percentage( sample['size'], benchmark )}% )"
                     end
                   end
-                  "<td>#{average} #{percentage}</td>"
+                  "<td>#{average} <span>#{percentage}</span></td>"
                 }.join}
               </tr>
             "}.join }
             <tr>
               <td>All</td>
               <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
-              <td>#{result['visits']['national']['quota']}</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
                 sample = result['visits']['national']['fluency'][subject]
                 if sample.nil?
@@ -158,7 +155,7 @@ class Brockman < Sinatra::Base
                     percentage = "( #{percentage( sample['size'], benchmark )}% )"
                   end
                 end
-                "<td>#{average} #{percentage}</td>"
+                "<td>#{average} <span>#{percentage}</span></td>"
               }.join}
             </tr>
         </tbody>
@@ -169,16 +166,15 @@ class Brockman < Sinatra::Base
     "
 
     zoneTableHtml = "
-      <h2>Report for #{county.capitalize} county</h2>
+      <h2>Report for #{titleize(county)} county</h2>
       <table>
         <thead>
           <tr>
             <th>Zone</th>
-            <th>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th>Targeted number of classroom visits<a href='#footer-note-2'><sup>[2]</sup></a></th>
             #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-              "<th class='sorting'>
+              "<th class='custSort'>
                 #{subjectLegend[subject]}<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
@@ -196,12 +192,11 @@ class Brockman < Sinatra::Base
             quota = zone['quota']
             met = zone['fluency']['metBenchmark']
             sampleTotal = 0
-            
+
           "
             <tr> 
               <td>#{zoneName.capitalize}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-              <td>#{quota}</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
                 if sample.nil?
@@ -222,7 +217,7 @@ class Brockman < Sinatra::Base
 
                 end
 
-                "<td>#{average} #{percentage}</td>"
+                "<td>#{average} <span>#{percentage}</span></td>"
               }.join}
 
             </tr>
