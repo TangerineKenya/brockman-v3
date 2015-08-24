@@ -172,7 +172,7 @@ class Brockman < Sinatra::Base
 	  console.log(el);
           for(var county in el.data.visits.byCounty)
           {
-            var tmpCounty = titleize(county.Name);
+            var tmpCounty = titleize(safeRead(el.data.visits.byCounty[county], 'name'););
             var tmp = {
               County   : tmpCounty,
               MonthInt : el.month,
