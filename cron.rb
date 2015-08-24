@@ -34,8 +34,8 @@ END
 puts header
 
 dbs             = [ 'group-national_tablet_program' ] #[ 'group-tangent_6m_complete' ] #'group-tangent_1m_complete', 'group-tangent_2m_complete' ]
-years           = [ 2015 ]  #[ 2014, 2015, 2016 ]
-months          = [ 6, 7, 8 ]   #[ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ]
+years           = [ 2014, 2015, 2016 ]
+months          = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ]
 workflowIds     = ["00b0a09a-2a9f-baca-2acb-c6264d4247cb","c835fc38-de99-d064-59d3-e772ccefcf7d"]
 subjectLegend   = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
 
