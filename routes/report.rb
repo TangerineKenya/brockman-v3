@@ -18,14 +18,7 @@ class Brockman < Sinatra::Base
 
     format = "html" unless format == "json"
     
-    safeCounty = county
-    
-    begin
-     county = Base64.urlsafe_decode64 county
-    rescue
-     county = "baringo"
-    end
-
+    countyId = county
 
     requestId = SecureRandom.base64
 
@@ -37,6 +30,10 @@ class Brockman < Sinatra::Base
       :designDoc => $settings[:designDoc],
       :db        => group
     })
+
+    puts $settings[:dbHost]
+    puts $settings[:login]
+    puts $settings[:designDoc]
 
     subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
 
@@ -59,23 +56,26 @@ class Brockman < Sinatra::Base
     end
 
     currentCounty         = nil
-    currentCountyName     = county.downcase #params[:county].downcase
+    currentCountyName     = nil
 
    
     #ensure that the county in the URL is valid - if not, select the first
-    if result['visits']['byCounty'][currentCountyName].nil?
-      result['visits']['byCounty'].find { |countyName, county|
+    if result['visits']['byCounty'][countyId].nil?
+      result['visits']['byCounty'].find { |countyId, county|
+        currentCountyId   = countyId
         currentCounty     = county
-        currentCountyName = countyName.downcase
+        currentCountyName = county['name']
         true
       }
     else 
-      currentCounty = result['visits']['byCounty'][currentCountyName]
+      currentCountyId   = countyId
+      currentCounty     = result['visits']['byCounty'][countyId]
+      currentCountyName = currentCounty['name']
     end
 
     #retrieve a county list for the select and sort it
     countyList = []
-    result['visits']['byCounty'].map { |countyName, county| countyList.push countyName }
+    result['visits']['byCounty'].map { |countyId, county| countyList.push county['name'] }
     countyList.sort!
 
     chartJs = "
@@ -93,7 +93,7 @@ class Brockman < Sinatra::Base
         var TREND_MONTHS = 3;  // number of months to try to pull into trend
         var month        = #{month.to_i};  // starting month
         var year         = #{year.to_i}; // starting year
-        var safeCounty  = '#{safeCounty}';
+        var countyId  = '#{countyId}';
 
         var reportMonth = moment(new Date(year, month, 1));
       
@@ -360,9 +360,9 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{ result['visits']['byCounty'].map{ | countyName, county |
+          #{ result['visits']['byCounty'].map{ | countyId, county |
 
-            countyName      = countyName.downcase
+            countyName      = county['name']
             visits          = county['visits']
             quota           = county['quota']
             sampleTotal     = 0
@@ -423,8 +423,8 @@ class Brockman < Sinatra::Base
       <label for='county-select'>County</label>
         <select id='county-select'>
           #{
-            countyList.map { | countyName |
-              "<option value='#{Base64.urlsafe_encode64(countyName)}' #{"selected" if countyName.downcase == currentCountyName}>#{titleize(countyName)}</option>"
+            result['visits']['byCounty'].map{ | countyId, county |
+              "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
             }.join("")
           }
         </select>
@@ -444,11 +444,11 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{result['visits']['byCounty'][currentCountyName]['zones'].map{ | zoneName, zone |
+          #{result['visits']['byCounty'][countyId]['zones'].map{ | zoneId, zone |
 
             row += 1
 
-            zoneName = zoneName.downcase
+            zoneName = zone['name']
             visits = zone['visits']
             quota = zone['quota']
             met = zone['fluency']['metBenchmark']
@@ -459,7 +459,7 @@ class Brockman < Sinatra::Base
 
           "
             <tr> 
-              <td>#{zoneName.capitalize}</td>
+              <td>#{zoneName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
@@ -551,13 +551,13 @@ class Brockman < Sinatra::Base
           };
 
           var mapDataURL = new Array();
-          mapDataURL['current'] = base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(currentCountyName.downcase)}.geojson';
+          mapDataURL['current'] = base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{countyId}.geojson';
           mapDataURL['all'] = new Array();
 
           mapDataURL['all']
           #{
-            countyList.map { | countyName |
-              "mapDataURL['all'].push(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{Base64.urlsafe_encode64(countyName.downcase)}.geojson');
+            result['visits']['byCounty'].map{ | countyId, county |
+              "mapDataURL['all'].push(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{countyId}.geojson');
               "
             }.join("")
           }
