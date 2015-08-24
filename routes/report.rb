@@ -172,9 +172,9 @@ class Brockman < Sinatra::Base
 	  console.log(el);
           for(var county in el.data.visits.byCounty)
           {
-            var tmpCounty = titleize(county);
+            var tmpCounty = titleize(county.Name);
             var tmp = {
-              County   : tmpCounty.name,
+              County   : tmpCounty,
               MonthInt : el.month,
               Year     : el.year,
               Month    : months[el.month]
@@ -189,7 +189,7 @@ class Brockman < Sinatra::Base
               tmpVisit['Visit Attainment'] = countyVisits / countyQuota * 100;
             }
 
-            if(tmpCounty.name.search(/apbet/i) == -1){
+            if(tmpCounty.search(/apbet/i) == -1){
               datasetObservationsPublic.push($.extend({}, tmp, tmpVisit));
             } else {
               datasetObservationsAPBET.push($.extend({}, tmp, tmpVisit));
