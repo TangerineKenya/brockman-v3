@@ -12,14 +12,7 @@ class Brockman < Sinatra::Base
 
     format = "html" unless format == "json"
     
-    safeCounty = county
-    
-    begin
-     county = Base64.urlsafe_decode64 county
-    rescue
-     county = "baringo"
-    end
-
+    countyId = county
 
     requestId = SecureRandom.base64
 
@@ -52,19 +45,22 @@ class Brockman < Sinatra::Base
       return invalidReport()
     end
 
+    currentCountyId       = nil
     currentCounty         = nil
-    currentCountyName     = county.downcase #params[:county].downcase
-
+    currentCountyName     = nil
    
     #ensure that the county in the URL is valid - if not, select the first
-    if result['visits']['byCounty'][currentCountyName].nil?
-      result['visits']['byCounty'].find { |countyName, county|
+    if result['visits']['byCounty'][countyId].nil?
+      result['visits']['byCounty'].find { |countyId, county|
+        currentCountyId   = countyId
         currentCounty     = county
-        currentCountyName = countyName.downcase
+        currentCountyName = county['name']
         true
       }
     else 
-      currentCounty = result['visits']['byCounty'][currentCountyName]
+      currentCountyId   = countyId
+      currentCounty     = result['visits']['byCounty'][countyId]
+      currentCountyName = currentCounty['name']
     end
 
     legendHtml = "
@@ -87,7 +83,6 @@ class Brockman < Sinatra::Base
 
     row = 0
     countyTableHtml = "
-      <h2>County Report</h2>
       <table>
         <thead>
           <tr>
@@ -103,9 +98,9 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{ result['visits']['byCounty'].map{ | countyName, county |
+          #{ result['visits']['byCounty'].map{ | countyId, county |
 
-            countyName      = countyName.downcase
+            countyName      = county['name']
             visits          = county['visits']
             quota           = county['quota']
             sampleTotal     = 0
@@ -160,13 +155,12 @@ class Brockman < Sinatra::Base
             </tr>
         </tbody>
       </table>
-
+      
       #{legendHtml}
-
     "
 
     zoneTableHtml = "
-      <h2>Report for #{titleize(county)} county</h2>
+      <h2>Report for #{titleize(currentCountyName)} county</h2>
       <table>
         <thead>
           <tr>
@@ -183,19 +177,22 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{result['visits']['byCounty'][currentCountyName]['zones'].map{ | zoneName, zone |
+          #{result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
 
             row += 1
 
-            zoneName = zoneName.downcase
+            zoneName = zone['name']
             visits = zone['visits']
             quota = zone['quota']
             met = zone['fluency']['metBenchmark']
             sampleTotal = 0
+            
+            # Do we still need this?
+            #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
 
           "
             <tr> 
-              <td>#{zoneName.capitalize}</td>
+              <td>#{zoneName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
                 sample = zone['fluency'][subject]
@@ -226,7 +223,6 @@ class Brockman < Sinatra::Base
       </table>
       
       #{legendHtml}
-
     "
 
     if county.downcase != "all"
@@ -250,7 +246,7 @@ class Brockman < Sinatra::Base
           <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> TUSOME</h1>
 
           #{contentHtml}
-          <p><a href='http://ntp.tangerinecentral.org/_csv/report/#{group}/#{workflowIds}/#{year}/#{month}/#{county}.html'>View map and details</a></p>
+          <p><a href='http://ntp.tangerinecentral.org/_csv/report/#{group}/#{workflowIds}/#{year}/#{month}/#{currentCountyId}.html'>View map and details</a></p>
         </body>
       </html>
 
@@ -263,7 +259,7 @@ class Brockman < Sinatra::Base
     mailHtml = premailer.to_inline_css
 
     if county.downcase != "all"
-      emailSubject = "Report for #{county.capitalize} County"
+      emailSubject = "Report for #{currentCountyName} County"
     else
       emailSubject = "County Report"
     end

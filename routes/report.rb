@@ -72,9 +72,6 @@ class Brockman < Sinatra::Base
     end
 
     #retrieve a county list for the select and sort it
-    countyList = []
-    result['visits']['byCounty'].map { |countyId, county| countyList.push county['name'] }
-    countyList.sort!
 
     chartJs = "
       function titleize(str){
@@ -421,7 +418,8 @@ class Brockman < Sinatra::Base
       <label for='county-select'>County</label>
         <select id='county-select'>
           #{
-            result['visits']['byCounty'].map{ | countyId, county |
+            orderedCounties = result['visits']['byCounty'].sort_by{ |countyId, county| county['name'] }
+            orderedCounties.map{ | countyId, county |
               "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
             }.join("")
           }

@@ -450,6 +450,25 @@ dbs.each { |db|
           # 
           # prepare the geojson doc for the map
           # 
+          schoolInList = false
+          if !schoolList['counties'][countyId].nil?
+            if !schoolList['counties'][countyId]['subCounties'][subCountyId].nil?
+              if !schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId].nil?
+                if !schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId]['schools'][schoolId].nil?
+                  schoolInList = true
+                else
+                  puts "School NOT in List - county: #{countyId}, subCounty: #{subCountyId}, zone: #{zoneId}, (school): #{schoolId}"
+                end
+              else
+                puts "School NOT in List - county: #{countyId}, subCounty: #{subCountyId}, (zone): #{zoneId}, school: #{schoolId}"
+              end
+            else
+              puts "School NOT in List - county: #{countyId}, (subCounty): #{subCountyId}, zone: #{zoneId}, school: #{schoolId}"
+            end
+          else
+            puts "School NOT in List - (county): #{countyId}, subCounty: #{subCountyId}, zone: #{zoneId}, school: #{schoolId}"
+          end
+
           
           if !sum['value']['gpsData'].nil?
             point = sum['value']['gpsData']
@@ -462,15 +481,26 @@ dbs.each { |db|
               startDate = Time.at(sum['value']['minTime'].to_i / 1000).strftime("%Y %b %d %H:%M")
             end
 
-            point['properties'] = [
-              { 'label' => 'Date',            'value' => startDate },
-              { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
-              #{ 'label' => 'Zone',            'value' => titleize(schoolList['counties'][countyId]['subcounties'][subCountyId]['zones'][zoneId]['name'].downcase) },
-              #{ 'label' => 'School',          'value' => titleize(schoolList['counties'][countyId]['subcounties'][subCountyId]['zones'][zoneId]['schools'][schoolId]['name'].downcase) },
-              { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) },
-              { 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
-              { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
-            ]
+            if !schoolInList
+              point['properties'] = [
+                { 'label' => 'Date',            'value' => startDate },
+                { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
+                { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) },
+                { 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
+                { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
+              ]
+
+            else 
+              point['properties'] = [
+                { 'label' => 'Date',            'value' => startDate },
+                { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
+                { 'label' => 'Zone',            'value' => titleize(schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId]['name'].downcase) },
+                { 'label' => 'School',          'value' => titleize(schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId]['schools'][schoolId]['name'].downcase) },
+                { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) },
+                { 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
+                { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
+              ]
+            end
 
             geoJSON['byCounty'][countyId]['data'].push point
           end
