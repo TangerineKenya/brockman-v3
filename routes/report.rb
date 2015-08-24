@@ -31,10 +31,6 @@ class Brockman < Sinatra::Base
       :db        => group
     })
 
-    puts $settings[:dbHost]
-    puts $settings[:login]
-    puts $settings[:designDoc]
-
     subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
 
     #
@@ -55,6 +51,8 @@ class Brockman < Sinatra::Base
       return invalidReport()
     end
 
+    
+    currentCountyId       = nil
     currentCounty         = nil
     currentCountyName     = nil
 
@@ -444,7 +442,7 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{result['visits']['byCounty'][countyId]['zones'].map{ | zoneId, zone |
+          #{result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
 
             row += 1
 
