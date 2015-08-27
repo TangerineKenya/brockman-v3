@@ -547,7 +547,7 @@ class Brockman < Sinatra::Base
           };
 
           var mapDataURL = new Array();
-          mapDataURL['current'] = base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{countyId}.geojson';
+          mapDataURL['current'] = base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{currentCountyId}.geojson';
           mapDataURL['all'] = new Array();
 
           mapDataURL['all']
