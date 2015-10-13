@@ -12,8 +12,14 @@ class Brockman < Sinatra::Base
 
     format = "html" unless format == "json"
     
-    countyId = county 
+<<<<<<< Updated upstream
+    countyId = county
+=======
+    safeCounty = county
     
+    
+>>>>>>> Stashed changes
+
     requestId = SecureRandom.base64
 
     TRIP_KEY_CHUNK_SIZE = 500
@@ -180,7 +186,11 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
+<<<<<<< Updated upstream
           #{result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+=======
+          #{(result['visits']['byCounty'][currentCountyName] || emptyCounty)['zones'].map{ | zoneName, zone |
+>>>>>>> Stashed changes
 
             row += 1
 
@@ -276,7 +286,7 @@ class Brockman < Sinatra::Base
       File.open('special.log', 'w') { |file| file.write("#{email.encoding}\n#{emailSubject.encoding}\n#{mailHtml.encoding}") }
       mail = Mail.deliver do
         to      email
-        from    'Tusome <no-reply@ntp.tangerinecentral.org>'
+        from    'Tablets Programme <no-reply@ntp.tangerinecentral.org>'
         subject emailSubject
 
         html_part do
