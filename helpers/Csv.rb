@@ -63,8 +63,8 @@ class Csv
       results = resultIds.map { | resultId | getResult(resultId) }
 
       row = []
-
       results.each_with_index { | result, resultIndex |
+        
 
         next if result.nil?
 
@@ -82,19 +82,19 @@ class Csv
 
           # Hack for handling location
           requireLocationFetch = key.match(/locationIndex/)
-          
+
           if requireLocationFetch then
-            
-            targetLocation = couch.postRequest({ 
-              :view => "csvLocations",
-              :data => { "keys" => ["#{key}"]},
-              :parseJson => true,
-              :params => { "reduce" => false }
+            targetLocation = [] 
+            targetLocation = @couch.postRequest({ 
+              :view   => "csvLocations", 
+              :data   => { "keys"   => ["#{value}"] }, 
+              :params => { "reduce" => false }, 
+              :categoryCache => false,
+              :parseJson => true
             })['rows']
 
-            for row in targetLocation
-
-              row['value'].each { | locCol, locVal |
+            for locRow in targetLocation
+              locRow['value'].each { | locCol, locVal |
                 unless indexByMachineName["#{machineName}-#{locCol}"] # Have we seen the machine name before?
                   machineNames.push "#{machineName}-#{locCol}"
                   indexByMachineName["#{machineName}-#{locCol}"] = machineNames.index("#{machineName}-#{locCol}")
@@ -107,6 +107,7 @@ class Csv
             end
           else
 
+            # puts "Col: #{key}, Val: #{value}"
             unless indexByMachineName[machineName] # Have we seen the machine name before?
               machineNames.push machineName
               indexByMachineName[machineName] = machineNames.index(machineName)
