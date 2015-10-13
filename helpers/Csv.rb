@@ -80,17 +80,42 @@ class Csv
           if isTimeRelated && isntFalsy && groupTimeZone.nil?  then value = Time.at(value.to_i / 1000).strftime("%yy %mm %dd %Hh %Mm") end
           if isTimeRelated && isntFalsy && !groupTimeZone.nil? then value = Time.at(value.to_i / 1000).getlocal(groupTimeZone).strftime("%yy %mm %dd %Hh %Mm") end
 
-          unless indexByMachineName[machineName] # Have we seen the machine name before?
-            machineNames.push machineName
-            columnNames.push key
-            indexByMachineName[machineName] = machineNames.index(machineName)
+          # Hack for handling location
+          requireLocationFetch = key.match(/locationIndex/)
+          
+          if requireLocationFetch then
+            
+            targetLocation = couch.postRequest({ 
+              :view => "csvLocations",
+              :data => { "keys" => ["#{key}"]},
+              :parseJson => true,
+              :params => { "reduce" => false }
+            })['rows']
+
+            for row in targetLocation
+
+              row['value'].each { | locCol, locVal |
+                unless indexByMachineName["#{machineName}-#{locCol}"] # Have we seen the machine name before?
+                  machineNames.push "#{machineName}-#{locCol}"
+                  indexByMachineName["#{machineName}-#{locCol}"] = machineNames.index("#{machineName}-#{locCol}")
+                  columnNames.push locCol
+                end
+
+                index = indexByMachineName["#{machineName}-#{locCol}"]
+                row[index] = locVal
+              }
+            end
+          else
+
+            unless indexByMachineName[machineName] # Have we seen the machine name before?
+              machineNames.push machineName
+              indexByMachineName[machineName] = machineNames.index(machineName)
+              columnNames.push key
+            end
+            index = indexByMachineName[machineName]
+            row[index] = value
 
           end
-
-          index = indexByMachineName[machineName]
-
-          row[index] = value
-
         end
 
       }
