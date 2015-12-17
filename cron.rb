@@ -387,7 +387,7 @@ dbs.each { |db|
         #
 
         for sum in tripRows
-
+          #puts sum['value']
           next if sum['value']['school'].nil?
           
           schoolId      = sum['value']['school']
