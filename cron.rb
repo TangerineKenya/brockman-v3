@@ -163,9 +163,9 @@ dbs.each { |db|
   #
 
   # Init the data structures based on the school list 
-  schoolList['counties'].map { | countyId, county |
+  schoolList['locations'].map { | countyId, county |
     resultTemplate['visits']['byCounty'][countyId]                  ||= {}
-    resultTemplate['visits']['byCounty'][countyId]['name']          ||= county['name']
+    resultTemplate['visits']['byCounty'][countyId]['name']          ||= county['label']
     resultTemplate['visits']['byCounty'][countyId]['zones']         ||= {}
     resultTemplate['visits']['byCounty'][countyId]['visits']        ||= 0
     resultTemplate['visits']['byCounty'][countyId]['quota']         ||= 0
@@ -175,10 +175,10 @@ dbs.each { |db|
     resultTemplate['visits']['byCounty'][countyId]['quota'] = county['quota']
 
     #manually flatten out the subCounty data level
-    county['subCounties'].map { | subCountyId, subCounty | 
-      subCounty['zones'].map { | zoneId, zone |
+    county['children'].map { | subCountyId, subCounty | 
+      subCounty['children'].map { | zoneId, zone |
         resultTemplate['visits']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
-        resultTemplate['visits']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['name']
+        resultTemplate['visits']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
         resultTemplate['visits']['byCounty'][countyId]['zones'][zoneId]['trips']          ||= []
         resultTemplate['visits']['byCounty'][countyId]['zones'][zoneId]['visits']         ||= 0
         resultTemplate['visits']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
@@ -196,7 +196,7 @@ dbs.each { |db|
         geoJSON['byCounty'][countyId]         ||= {}
         geoJSON['byCounty'][countyId]['data'] ||= []
 
-        zone['schools'].map { | schoolId, school |
+        zone['children'].map { | schoolId, school |
           locationBySchool[schoolId]                  ||= {}
           locationBySchool[schoolId]['countyId']        = countyId
           locationBySchool[schoolId]['subCountyId']     = subCountyId
@@ -291,7 +291,7 @@ dbs.each { |db|
 
       # Check to see if the aggregate geo doc already exists for each county
       
-      schoolList['counties'].map { | countyId, county |
+      schoolList['locations'].map { | countyId, county |
         begin
           aggGeoDoc = couch.getRequest({ 
             :doc => "#{aggregateGeoDocId}-#{countyId}", 
@@ -451,10 +451,10 @@ dbs.each { |db|
           # prepare the geojson doc for the map
           # 
           schoolInList = false
-          if !schoolList['counties'][countyId].nil?
-            if !schoolList['counties'][countyId]['subCounties'][subCountyId].nil?
-              if !schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId].nil?
-                if !schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId]['schools'][schoolId].nil?
+          if !schoolList['locations'][countyId].nil?
+            if !schoolList['locations'][countyId]['children'][subCountyId].nil?
+              if !schoolList['locations'][countyId]['children'][subCountyId]['children'][zoneId].nil?
+                if !schoolList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId].nil?
                   schoolInList = true
                 else
                   puts "School NOT in List - county: #{countyId}, subCounty: #{subCountyId}, zone: #{zoneId}, (school): #{schoolId}"
@@ -494,8 +494,8 @@ dbs.each { |db|
               point['properties'] = [
                 { 'label' => 'Date',            'value' => startDate },
                 { 'label' => 'Subject',         'value' => subjectLegend[sum['value']['subject']] },
-                { 'label' => 'Zone',            'value' => titleize(schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId]['name'].downcase) },
-                { 'label' => 'School',          'value' => titleize(schoolList['counties'][countyId]['subCounties'][subCountyId]['zones'][zoneId]['schools'][schoolId]['name'].downcase) },
+                { 'label' => 'Zone',            'value' => titleize(schoolList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
+                { 'label' => 'School',          'value' => titleize(schoolList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
                 { 'label' => 'TAC tutor',       'value' => titleize(sum['value']['user'].downcase) },
                 { 'label' => 'Lesson Week',     'value' => sum['value']['week'] },
                 { 'label' => 'Lesson Day',      'value' => sum['value']['day'] }
