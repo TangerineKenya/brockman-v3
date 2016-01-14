@@ -8,9 +8,10 @@ class Csv
 
   def initialize( options )
 
-    @couch = options[:couch]
-    @name  = options[:name]
-    @path  = options[:path]
+    @couch         = options[:couch]
+    @name          = options[:name]
+    @path          = options[:path]
+    @locationList  = options[:locationList]
     @cachedResults = {}
 
   end
@@ -84,26 +85,22 @@ class Csv
           requireLocationFetch = key.match(/locationIndex/)
 
           if requireLocationFetch then
-            targetLocation = [] 
-            targetLocation = @couch.postRequest({ 
-              :view   => "csvLocations", 
-              :data   => { "keys"   => ["#{value}"] }, 
-              :params => { "reduce" => false }, 
-              :categoryCache => false,
-              :parseJson => true
-            })['rows']
+            #puts "fetching location - locationIndex - #{value}"
+            locationData = @locationList.retrieveLocation(value.split('-').last)
+            puts "locationData: #{locationData}"
 
-            for locRow in targetLocation
-              locRow['value'].each { | locCol, locVal |
-                unless indexByMachineName["#{machineName}-#{locCol}"] # Have we seen the machine name before?
-                  machineNames.push "#{machineName}-#{locCol}"
-                  indexByMachineName["#{machineName}-#{locCol}"] = machineNames.index("#{machineName}-#{locCol}")
-                  columnNames.push locCol
-                end
+            for pair in locationData
+              locCol = pair.first.gsub "Label", "Name"
+              locVal = pair.last
 
-                index = indexByMachineName["#{machineName}-#{locCol}"]
-                row[index] = locVal
-              }
+              unless indexByMachineName["#{machineName}-#{locCol}"] # Have we seen the machine name before?
+                machineNames.push "#{machineName}-#{locCol}"
+                indexByMachineName["#{machineName}-#{locCol}"] = machineNames.index("#{machineName}-#{locCol}")
+                columnNames.push locCol
+              end
+
+              index = indexByMachineName["#{machineName}-#{locCol}"]
+              row[index] = locVal
             end
           else
 
