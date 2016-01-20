@@ -87,7 +87,7 @@ class Csv
           if requireLocationFetch then
             #puts "fetching location - locationIndex - #{value}"
             locationData = @locationList.retrieveLocation(value.split('-').last)
-            puts "locationData: #{locationData}"
+            #puts "locationData: #{locationData}"
 
             for pair in locationData
               locCol = pair.first.gsub "Label", "Name"

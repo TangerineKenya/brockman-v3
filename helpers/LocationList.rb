@@ -32,7 +32,7 @@ class LocationList
       location = walkTree(@locationListDoc["locations"], 0, treePath)
       return location
     end
-    return {Location => "Cannot be retrieved"}
+    return {}
   end 
 
   def walkTree(node, depth, path)
