@@ -36,8 +36,8 @@ END
 puts header
 
 groups = []
-groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2015, 'endYear' => 2017 })
-#groups.push({ 'db' => 'group-national_tablet_program_test', 'helper' => NtpReports, 'startYear' => 2016, 'endYear' => 2016 })
+#groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2014, 'endYear' => 2016 })
+groups.push({ 'db' => 'group-national_tablet_program_test', 'helper' => NtpReports, 'startYear' => 2016, 'endYear' => 2016 })
 
 
 #
@@ -217,8 +217,8 @@ groups.each { |group|
   taskStart = Time.now()
 
   (group["startYear"]..group["endYear"]).each { |year| 
-    (1..12).each { |month|
-#    (1..2).each { |month|
+#    (1..12).each { |month|
+    (1..2).each { |month|
     
       helper.resetSkippedCount() if helper
 
