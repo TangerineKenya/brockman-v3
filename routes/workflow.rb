@@ -1,6 +1,7 @@
 
 
 require_relative '../helpers/LocationList.rb'
+require_relative '../helpers/UserList.rb'
 
 class Brockman < Sinatra::Base
 
@@ -40,6 +41,13 @@ class Brockman < Sinatra::Base
     # get locations
     #
     locationList = LocationList.new({
+      :couch => couch
+    })
+
+    #
+    # get users
+    #
+    userList = UserList.new({
       :couch => couch
     })
 
@@ -109,7 +117,8 @@ class Brockman < Sinatra::Base
       :couch => couch,
       :name => workflowName,
       :path => groupPath,
-      :locationList => locationList
+      :locationList => locationList,
+      :userList => userList
     })
 
     file = csv.doWorkflow({

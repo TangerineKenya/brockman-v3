@@ -12,6 +12,7 @@ class Csv
     @name          = options[:name]
     @path          = options[:path]
     @locationList  = options[:locationList]
+    @userList      = options[:userList]
     @cachedResults = {}
 
   end
@@ -81,10 +82,31 @@ class Csv
           if isTimeRelated && isntFalsy && groupTimeZone.nil?  then value = Time.at(value.to_i / 1000).strftime("%yy %mm %dd %Hh %Mm") end
           if isTimeRelated && isntFalsy && !groupTimeZone.nil? then value = Time.at(value.to_i / 1000).getlocal(groupTimeZone).strftime("%yy %mm %dd %Hh %Mm") end
 
+          #hack for grabbing MPESA number along with enumerator
+          requireUserFetch = key.match(/enumerator/)
+          
           # Hack for handling location
           requireLocationFetch = key.match(/locationIndex/)
 
-          if requireLocationFetch then
+          if requireUserFetch then
+            unless indexByMachineName["#{machineName}-enumerator"] # Have we seen the machine name before?
+              machineNames.push "#{machineName}-enumerator"
+              indexByMachineName["#{machineName}-enumerator"] = machineNames.index("#{machineName}-enumerator")
+              columnNames.push key
+            end
+            index = indexByMachineName["#{machineName}-enumerator"]
+            row[index] = value
+            
+            unless indexByMachineName["#{machineName}-mpesa"] # Have we seen the machine name before?
+              machineNames.push "#{machineName}-mpesa"
+              indexByMachineName["#{machineName}-mpesa"] = machineNames.index("#{machineName}-mpesa")
+              columnNames.push "mpesa"
+            end
+            index      = indexByMachineName["#{machineName}-mpesa"]
+            tmpUser    = @userList.getUser(value)
+            row[index] = (tmpUser["mpesaPhone"] || "---")
+
+          elsif requireLocationFetch then
             #puts "fetching location - locationIndex - #{value}"
             locationData = @locationList.retrieveLocation(value.split('-').last)
             #puts "locationData: #{locationData}"
