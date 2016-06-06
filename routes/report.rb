@@ -931,7 +931,7 @@ class Brockman < Sinatra::Base
               iDisplayLength :-1, 
               sDom : 't',
               aoColumnDefs: [
-                 { sType: 'num-html', aTargets: [1,2,3] }
+                 { sType: 'num-html', aTargets: [1,2,3,4,5] }
                ]
             });
 
