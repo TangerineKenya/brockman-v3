@@ -96,6 +96,15 @@ class Csv
             end
             index = indexByMachineName["#{machineName}-enumerator"]
             row[index] = value
+
+            unless indexByMachineName["#{machineName}-role"] # Have we seen the machine name before?
+              machineNames.push "#{machineName}-role"
+              indexByMachineName["#{machineName}-role"] = machineNames.index("#{machineName}-role")
+              columnNames.push "role"
+            end
+            index = indexByMachineName["#{machineName}-role"]
+            tmpUser    = @userList.getUser(value)
+            row[index] = (tmpUser["role"] || "---")
             
             unless indexByMachineName["#{machineName}-mpesa"] # Have we seen the machine name before?
               machineNames.push "#{machineName}-mpesa"
@@ -105,6 +114,15 @@ class Csv
             index      = indexByMachineName["#{machineName}-mpesa"]
             tmpUser    = @userList.getUser(value)
             row[index] = (tmpUser["mpesaPhone"] || "---")
+
+            unless indexByMachineName["#{machineName}-phone"] # Have we seen the machine name before?
+              machineNames.push "#{machineName}-phone"
+              indexByMachineName["#{machineName}-phone"] = machineNames.index("#{machineName}-phone")
+              columnNames.push "phone"
+            end
+            index      = indexByMachineName["#{machineName}-phone"]
+            tmpUser    = @userList.getUser(value)
+            row[index] = (tmpUser["phone"] || "---")
 
           elsif requireLocationFetch then
             #puts "fetching location - locationIndex - #{value}"
