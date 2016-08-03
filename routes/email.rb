@@ -89,8 +89,13 @@ class Brockman < Sinatra::Base
             <th>County</th>
             <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
+
             #{reportSettings['fluency']['subjects'].map{ | subject |
-              "<th class='custSort'>#{subjectLegend[subject]}<br>
+              "<th class='custSort'>#{subjectLegend[subject]} - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
+              </th>
+              <th class='custSort'>#{subjectLegend[subject]} - Class 2<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
@@ -103,7 +108,8 @@ class Brockman < Sinatra::Base
             countyName      = county['name']
             visits          = county['visits']
             quota           = county['quota']
-            sampleTotal     = 0
+            cl1sampleTotal = 0
+            cl2sampleTotal = 0
 
             "
               <tr>
@@ -111,23 +117,47 @@ class Brockman < Sinatra::Base
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
                 #{reportSettings['fluency']['subjects'].map{ | subject |
                   #ensure that there, at minimum, a fluency category for the county
-                  sample = county['fluency'][subject]
-                  if sample.nil?
-                    average = "no data"
+                  
+                  puts county['fluency']
+                  puts countyId
+                  puts county['fluency']['class']
+                  puts county['fluency']['class']['1']
+                  puts county['fluency']['class']['1'][subject]
+                  cl1sample = county['fluency']['class']['1'][subject]
+                  if cl1sample.nil?
+                    cl1average = "no data"
                   else
-                    if sample && sample['size'] != 0 && sample['sum'] != 0
-                      sampleTotal += sample['size']
-                      average = ( sample['sum'] / sample['size'] ).round
+                    if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                      cl1sampleTotal += cl1sample['size']
+                      cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
                     else
-                      average = '0'
+                      cl1average = '0'
                     end
 
                     if subject != "operation"
-                      benchmark = sample['metBenchmark']
-                      percentage = "( #{percentage( sample['size'], benchmark )}% )"
+                      cl1benchmark = cl1sample['metBenchmark']
+                      cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
                     end
                   end
-                  "<td>#{average} <span>#{percentage}</span></td>"
+
+                  cl2sample = county['fluency']['class']['2'][subject]
+                  if cl2sample.nil?
+                    cl2average = "no data"
+                  else
+                    if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                      cl2sampleTotal += cl2sample['size']
+                      cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                    else
+                      cl2average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl2benchmark = cl2sample['metBenchmark']
+                      cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                    end
+                  end
+                  "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
                 }.join}
               </tr>
             "}.join }
@@ -135,25 +165,45 @@ class Brockman < Sinatra::Base
               <td>All</td>
               <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
               #{reportSettings['fluency']['subjects'].map{ | subject |
-                sample = result['visits']['national']['fluency'][subject]
-                if sample.nil?
-                  average = "no data"
+                cl1sample = result['visits']['national']['fluency']['class']['1'][subject]
+                if cl1sample.nil?
+                  cl1average = "no data"
                 else
-                  if sample && sample['size'] != 0 && sample['sum'] != 0
-                    average = ( sample['sum'] / sample['size'] ).round
+                  if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                    cl1sampleTotal = cl1sample['size']
+                    cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
                   else
-                    average = '0'
+                    cl1average = '0'
                   end
 
                   if subject != "operation"
-                    benchmark = sample['metBenchmark']
-                    percentage = "( #{percentage( sample['size'], benchmark )}% )"
+                    cl1benchmark = cl1sample['metBenchmark']
+                    cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
                   end
                 end
-                "<td>#{average} <span>#{percentage}</span></td>"
+
+                cl2sample = result['visits']['national']['fluency']['class']['2'][subject]
+                if cl2sample.nil?
+                  cl2average = "no data"
+                else
+                  if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                    cl2sampleTotal = cl2sample['size']
+                    cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                  else
+                    cl2average = '0'
+                  end
+
+                  if subject != "operation"
+                    cl2benchmark = cl2sample['metBenchmark']
+                    cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                  end
+                end
+                "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
               }.join}
             </tr>
         </tbody>
+        
       </table>
       
       #{legendHtml}
@@ -166,13 +216,16 @@ class Brockman < Sinatra::Base
       <h2>Report for #{titleize(currentCountyName)} county</h2>
       <table>
         <thead>
-          <tr>
             <th>Zone</th>
             <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
             #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
               "<th class='custSort'>
-                #{subjectLegend[subject]}<br>
+                #{subjectLegend[subject]} - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
+              </th><th class='custSort'>
+                #{subjectLegend[subject]} - Class 2<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
@@ -188,7 +241,8 @@ class Brockman < Sinatra::Base
             visits = zone['visits']
             quota = zone['quota']
             met = zone['fluency']['metBenchmark']
-            sampleTotal = 0
+            cl1sampleTotal = 0
+            cl2sampleTotal = 0
             
             # Do we still need this?
             #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
@@ -198,26 +252,42 @@ class Brockman < Sinatra::Base
               <td>#{zoneName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
               #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-                sample = zone['fluency'][subject]
-                if sample.nil?
-                  average = "no data"
-                else
-                  
-                  if sample && sample['size'] != 0 && sample['sum'] != 0
-                    sampleTotal += sample['size']
-                    average = ( sample['sum'] / sample['size'] ).round
+                
+                cl1sample = zone['fluency']['class']['1'][subject]
+                  if cl1sample.nil?
+                    cl1average = "no data"
                   else
-                    average = '0'
+                    if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                      cl1sampleTotal += cl1sample['size']
+                      cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
+                    else
+                      cl1average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl1benchmark = cl1sample['metBenchmark']
+                      cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
+                    end
                   end
 
-                  if subject != 'operation'
-                    benchmark = sample['metBenchmark']
-                    percentage = "( #{percentage( sample['size'], benchmark )}% )"
+                  cl2sample = zone['fluency']['class']['2'][subject]
+                  if cl2sample.nil?
+                    cl2average = "no data"
+                  else
+                    if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                      cl2sampleTotal += cl2sample['size']
+                      cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                    else
+                      cl2average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl2benchmark = cl2sample['metBenchmark']
+                      cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                    end
                   end
-
-                end
-
-                "<td>#{average} <span>#{percentage}</span></td>"
+                  "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
               }.join}
 
             </tr>
