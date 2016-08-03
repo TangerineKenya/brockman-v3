@@ -218,7 +218,7 @@ groups.each { |group|
 
   (group["startYear"]..group["endYear"]).each { |year| 
     (1..12).each { |month|
-#    (1..2).each { |month|
+    #(3..5).each { |month|
     
       helper.resetSkippedCount() if helper
 
@@ -315,6 +315,10 @@ groups.each { |group|
         end
 
       }
+      #post processing
+      puts "Processing Compensation"
+      helper.postProcessTrips(monthData, templates) if helper
+      #end
 
       puts "      # Skipped: #{helper.getSkippedCount()}"
 
