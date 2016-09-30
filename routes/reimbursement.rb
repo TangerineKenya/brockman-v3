@@ -12,7 +12,7 @@ require_relative '../utilities/pushUniq'
 
 class Brockman < Sinatra::Base
   #url
-  get '/compensation/:group/:year/:month/:county/:zone' do |group,year,month,county,zone|
+  get '/reimbursement/:group/:year/:month/:county/:zone' do |group,year,month,county,zone|
     
     #default vals 
     countyId = county
@@ -82,19 +82,6 @@ class Brockman < Sinatra::Base
         currentZoneName = currentZone['name']
       end
 
-      # Get trips from current zone
-      zoneTripIds = result['visits']['byCounty'][currentCountyId]['zones'][currentZoneId]['trips'].map{ |e| e }
-
-      # get the real data
-      tripsResponse = couch.postRequest({
-        :view => "spirtRotut",
-        :params => { "group" => true },
-        :data => { "keys" => zoneTripIds },
-        :parseJson => true,
-        :cache => true
-      } )
-      zoneTrips = tripsResponse['rows']
-
       nationalTableHtml = "
           <table class='national-table'>
             <thead>
@@ -110,7 +97,7 @@ class Brockman < Sinatra::Base
 
                 countyName      = county['name'].downcase
                 visits          = county['visits']
-                quota           = county['quota']
+                quota           = county['numTeachers']
                 compensation   = county['compensation']
 
                 "
@@ -124,7 +111,7 @@ class Brockman < Sinatra::Base
                 <tr>
                   <td>All</td>
                   <td>#{result['visits']['national']['visits']}</td>
-                  <td>#{result['visits']['national']['quota']}</td>
+                  <td>#{result['visits']['national']['numTeachers']}</td>
                   <td align='right'>#{('%.2f' % result['visits']['national']['compensation'])} KES</td>
                 </tr>
             </tbody>
@@ -147,37 +134,30 @@ class Brockman < Sinatra::Base
           #{result['visits']['byCounty'][currentCountyId]['zones'].map{ |zoneId, zone|
 
               zoneName = zone['name'].downcase
-              quota = zone['quota']
+              quota = zone['numTeachers']
 
               if result['users']['all'].length != 0
                 result['users']['all'].map{ | username,  user |
+               
+                if !result['users']['all'][username]['other'][currentCountyId].nil? && !result['users']['all'][username]['other'][currentCountyId][zoneId].nil?
                   phone = result['users']['all'][username]['data']['Mpesa']
-          if !result['users']['all'][username]['other'][currentCountyId].nil? && !result['users']['all'][username]['other'][currentCountyId][zoneId].nil?
-             visits        = result['users']['all'][username]['other'][currentCountyId][zoneId]['visits']
-                     compensation  = result['users']['all'][username]['other'][currentCountyId][zoneId]['compensation']
-                     
-             "
-                    <tr> 
-                      <td>#{zoneName.capitalize} </td>
-                      <td>#{username.capitalize}</td>
-                      <td>#{phone}</td>
-                      <td>#{visits}</td>
-                      <td>#{quota}</td>
-                      <td align='right'>#{('%.2f' % compensation)} KES</td>
-                    </tr>
-                  "
-          end
+                  visits        = result['users']['all'][username]['other'][currentCountyId][zoneId]['visits']
+                  compensation  = result['users']['all'][username]['other'][currentCountyId][zoneId]['compensation']
+                           
+                   "
+                          <tr> 
+                            <td>#{zoneName.capitalize} </td>
+                            <td>#{username.capitalize}</td>
+                            <td>#{phone}</td>
+                            <td>#{visits}</td>
+                            <td>#{quota}</td>
+                            <td align='right'>#{('%.2f' % compensation)} KES</td>
+                          </tr>
+                        "
+                end
                 }.join
               else 
-                "
-                  <tr> 
-                    <td>#{zoneName.capitalize} </td>
-                    <td align='center'>#{phone}</td>
-                    <td align='center'> --- </td>
-                    <td>#{quota}</td>
-                    <td align='center'> --- </td>
-                  </tr>
-                "
+                
               end
             }.join
           }
@@ -186,43 +166,7 @@ class Brockman < Sinatra::Base
     "
 
 
-  zoneTableHtml = "<table class='zone-table'>
-        <thead>
-          <tr>
-            <th>Day</th>
-            <th>TAC Tutor</th>
-            <th>School Name</th>
-            <th>Subject</th>
-            <th>Class</th>
-            <th>Duration</th>
-          </tr>
-        </thead>
-        <tbody>
-          #{ 
-          zoneTrips.map{ | trip |
-            
-            if !groupTimeZone.nil?
-              day = Time.at(trip['value']['maxTime'].to_i / 1000).getlocal(groupTimeZone).strftime("%m / %d")
-            else 
-              day = Time.at(trip['value']['maxTime'].to_i / 1000).strftime("%m / %d")
-            end
-
-            subject = subjectLegend[trip['value']['subject']]
-
-            duration = (trip['value']['maxTime'].to_i - trip['value']['minTime'].to_i ) / 1000 / 60
-
-            "
-              <tr>
-                <td align='center'>#{day}</td>
-                <td>#{trip['value']['user'].capitalize}</td>
-                <td></td>
-                <td>#{subject}</td>
-                <td align='center'>#{trip['value']['class']}</td>
-                <td align='center'>#{(duration/3600)} Minutes</td>
-              </tr>
-            "}.join }
-        </tbody>
-      </table>"
+  zoneTableHtml = ""
 
     html = "<html>
           <head>
@@ -278,7 +222,7 @@ class Brockman < Sinatra::Base
                   function reloadReport(){
                       year    = $('#year-select').val().toLowerCase()
                         month   = $('#month-select').val().toLowerCase()
-                      document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/compensation/#{group}/'+year+'/'+month+'/'+county+'/'+zone;
+                      document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/reimbursement/#{group}/'+year+'/'+month+'/'+county+'/'+zone;
                   }
               });
                 </script>

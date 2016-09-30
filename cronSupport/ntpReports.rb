@@ -39,6 +39,7 @@ class NtpReports
     templates['result']['visits']['national']                  ||= {}
     templates['result']['visits']['national']['visits']        ||= 0
     templates['result']['visits']['national']['quota']         ||= 0
+    templates['result']['visits']['national']['numTeachers']   ||= 0
     templates['result']['visits']['national']['compensation']  ||= 0
     templates['result']['visits']['national']['fluency']                   ||= {}
     templates['result']['visits']['national']['fluency']['class']          ||= {}
@@ -49,6 +50,7 @@ class NtpReports
     templates['result']['visits']['scde']['national']                  ||= {}
     templates['result']['visits']['scde']['national']['visits']        ||= 0
     templates['result']['visits']['scde']['national']['quota']         ||= 0
+    templates['result']['visits']['scde']['national']['numTeachers']   ||= 0
     templates['result']['visits']['scde']['national']['compensation']  ||= 0
 
     templates['result']['visits']['esqac']                              ||= {}
@@ -56,6 +58,7 @@ class NtpReports
     templates['result']['visits']['esqac']['national']                  ||= {}
     templates['result']['visits']['esqac']['national']['visits']        ||= 0
     templates['result']['visits']['esqac']['national']['quota']         ||= 0
+    templates['result']['visits']['esqac']['national']['numTeachers']   ||= 0
     templates['result']['visits']['esqac']['national']['compensation']  ||= 0
     templates['result']['visits']['esqac']['national']['fluency']       ||= {}
 
@@ -82,6 +85,7 @@ class NtpReports
       templates['result']['visits']['byCounty'][countyId]['zones']         ||= {}
       templates['result']['visits']['byCounty'][countyId]['visits']        ||= 0
       templates['result']['visits']['byCounty'][countyId]['quota']         ||= 0
+      templates['result']['visits']['byCounty'][countyId]['numTeachers']   ||= 0
       templates['result']['visits']['byCounty'][countyId]['compensation']  ||= 0
       templates['result']['visits']['byCounty'][countyId]['fluency']       ||= {}
       templates['result']['visits']['byCounty'][countyId]['fluency']['class']          ||= {}
@@ -99,12 +103,15 @@ class NtpReports
       templates['result']['visits']['byCounty'][countyId]['esqac']               ||= {}
       templates['result']['visits']['byCounty'][countyId]['esqac']['visits']     ||= 0
       templates['result']['visits']['byCounty'][countyId]['esqac']['quota']      ||= 0
+      
 
       templates['result']['visits']['byCounty'][countyId]['scde']               ||= {}
       templates['result']['visits']['byCounty'][countyId]['scde']['visits']     ||= 0
       templates['result']['visits']['byCounty'][countyId]['scde']['quota']      ||= 0
+      
 
-      templates['result']['visits']['byCounty'][countyId]['quota'] = county['quota']
+      templates['result']['visits']['byCounty'][countyId]['quota']    = county['quota']
+        
 
       #manually flatten out the subCounty data level
       county['children'].map { | subCountyId, subCounty | 
@@ -116,11 +123,13 @@ class NtpReports
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['trips']    ||= []
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['visits']   ||= 0
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['quota']    ||= 0
+        
 
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']             ||= {}
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['trips']    ||= []
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['visits']   ||= 0
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['quota']    ||= 0
+        
 
         subCounty['children'].map { | zoneId, zone |
 
@@ -129,6 +138,7 @@ class NtpReports
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips']          ||= []
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']         ||= 0
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
+          templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['numTeachers']    ||= 0
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['compensation']   ||= 0
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']        ||= {}
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']          ||= {}
@@ -138,6 +148,10 @@ class NtpReports
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['quota']  += zone['quota'].to_i
           templates['result']['visits']['national']['quota']                             += zone['quota'].to_i
 
+          templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['numTeachers']  += zone['numTeachers'].to_i
+          templates['result']['visits']['byCounty'][countyId]['numTeachers']                   += zone['numTeachers'].to_i
+          templates['result']['visits']['national']['numTeachers']                             += zone['numTeachers'].to_i
+      
           templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['zones'].push(zoneId)
 
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
@@ -562,12 +576,17 @@ class NtpReports
                 #compute rate for zone
                 puts "Processing compensation for #{userName}"
                 visits = zoneData['visits']
-                quota =  templates['result']['visits']['byCounty'][countyId]['zones'][visitZoneId]['quota'] 
+                teachers =  templates['result']['visits']['byCounty'][countyId]['zones'][visitZoneId]['numTeachers']
+                #teachers should be less than or equal 40
+                if teachers>40
+                  teachers = 40
+                end  
+
                 compensation = 0
                 #tac tutor
                 if role == 'tac-tutor'
                   
-                  completePct = (visits + 0.0) / quota
+                  completePct = (visits + 0.0) / teachers
                                     
                   #completePct should be less that or equal to 1
           
@@ -582,7 +601,7 @@ class NtpReports
                   end
                 elsif role == 'coach' 
                   #coach
-                  completePct = (visits + 0.0) / (quota * 2)
+                  completePct = (visits + 0.0) / (teachers * 2)
                                     
                   #completePct should be less that or equal to 1
                   compensation = (((completePct > 1) ? 1 : completePct) * 6000).round(2)
@@ -594,15 +613,12 @@ class NtpReports
                 #save compensation data
                 zoneData["compensation"] += compensation
                 monthData['result']['users']['all'][userName]['total']['compensation'] += compensation
-                monthData['result']['users']['all'][userName]['data']['Mpesa'] = user['data']['phone']
+                monthData['result']['users']['all'][userName]['data']['Mpesa']         = user['data']['phone']
 
-                monthData['result']['visits']['byCounty'][countyId]['compensation']  += compensation
+                monthData['result']['visits']['byCounty'][countyId]['compensation']   += compensation
+                monthData['result']['visits']['national']['compensation']             += compensation
+
                 monthData['result']['visits']['byCounty'][countyId]['zones'][visitZoneId]['compensation']   += compensation
-
-                monthData['result']['visits']['national']['compensation']   += compensation
-
-                #monthData['result']['compensation']['byCounty'][countyId]   += compensation
-                #monthData['result']['compensation']['national']             += compensation
              }
           end
         

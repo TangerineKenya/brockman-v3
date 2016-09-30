@@ -205,7 +205,10 @@ class Brockman < Sinatra::Base
             //tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
             //if(isNaN(tmp['Math Score'])) { delete tmp['Math Score'] };
 
-            
+            tmp['Maths Score - Class 1'] = safeRead(el.data.visits.byCounty[county].fluency.class[1],'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[1],'operation','size');
+            tmp['Maths Score - Class 2'] = safeRead(el.data.visits.byCounty[county].fluency.class[2],'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[2],'operation','size');
+            if(isNaN(tmp['Maths Score - Class 1'])) { delete tmp['Maths Score - Class 1'] };
+            if(isNaN(tmp['Maths Score - Class 2'])) { delete tmp['Maths Score - Class 2'] };
                           
             datasetScores.push(tmp);
           }
@@ -216,6 +219,8 @@ class Brockman < Sinatra::Base
         addChart(datasetScores, 'English Score - Class 2', 'English Score - Class 2', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 1', 'Kiswahili Score - Class 1', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 2', 'Kiswahili Score - Class 2', 'Correct Items Per Minute');
+        addChart(datasetScores, 'Maths Score - Class 1', 'Maths Score - Class 1', 'Correct Items Per Minute');
+        addChart(datasetScores, 'Maths Score - Class 2', 'Maths Score - Class 2', 'Correct Items Per Minute');
         //addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
         addChart(datasetObservationsPublic, 'Visit Attainment', 'Classroom Observations (Public)','Percentage');
         addChart(datasetObservationsAPBET, 'Visit Attainment', 'Classroom Observations (APBET)','Percentage');
@@ -393,10 +398,10 @@ class Brockman < Sinatra::Base
                       cl1average = '0'
                     end
 
-                    if subject != "operation"
+                    #if subject != "operation"
                       cl1benchmark = cl1sample['metBenchmark']
                       cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                    end
+                    #end
                   end
 
                   cl2sample = county['fluency']['class']['2'][subject]
@@ -410,10 +415,10 @@ class Brockman < Sinatra::Base
                       cl2average = '0'
                     end
 
-                    if subject != "operation"
+                    #if subject != "operation"
                       cl2benchmark = cl2sample['metBenchmark']
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                    end
+                    #end
                   end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>"
@@ -435,10 +440,10 @@ class Brockman < Sinatra::Base
                     cl1average = '0'
                   end
 
-                  if subject != "operation"
+                  #if subject != "operation"
                     cl1benchmark = cl1sample['metBenchmark']
                     cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                  end
+                  #end
                 end
 
                 cl2sample = result['visits']['national']['fluency']['class']['2'][subject]
@@ -452,10 +457,10 @@ class Brockman < Sinatra::Base
                     cl2average = '0'
                   end
 
-                  if subject != "operation"
+                  #if subject != "operation"
                     cl2benchmark = cl2sample['metBenchmark']
                     cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                  end
+                  #end
                 end
                 "<td>#{cl1average} <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>"
@@ -526,10 +531,10 @@ class Brockman < Sinatra::Base
                       cl1average = '0'
                     end
 
-                    if subject != "operation"
+                    #if subject != "operation"
                       cl1benchmark = cl1sample['metBenchmark']
                       cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                    end
+                    #end
                   end
 
                   cl2sample = zone['fluency']['class']['2'][subject]
@@ -543,10 +548,10 @@ class Brockman < Sinatra::Base
                       cl2average = '0'
                     end
 
-                    if subject != "operation"
+                    #if subject != "operation"
                       cl2benchmark = cl2sample['metBenchmark']
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                    end
+                    #end
                   end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>"
@@ -719,6 +724,234 @@ class Brockman < Sinatra::Base
       </table>
 
     "
+    #***************************** Math Report components ***************************
+    row = 0
+    mathsCountyTableHtml = "
+      <table class='tacTutor-table'>
+        <thead>
+          <tr>
+            <th>County</th>
+            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
+
+            #{reportSettings['fluency']['subjects'].map{ | subject |
+              "<th class='custSort'>#{subjectLegend[subject]} - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
+              </th>
+              <th class='custSort'>#{subjectLegend[subject]} - Class 2<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
+              </th>"
+            }.join}
+          </tr>
+        </thead>
+        <tbody>
+          #{ result['visits']['byCounty'].map{ | countyId, county |
+
+            countyName      = county['name']
+            visits          = county['visits']
+            quota           = county['quota']
+            cl1sampleTotal = 0
+            cl2sampleTotal = 0
+
+            "
+              <tr>
+                <td>#{titleize(countyName)}</td>
+                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                #{reportSettings['fluency']['subjects'].map{ | subject |
+                  #ensure that there, at minimum, a fluency category for the county
+                  
+                  puts county['fluency']
+                  puts countyId
+                  puts county['fluency']['class']
+                  puts county['fluency']['class']['1']
+                  puts county['fluency']['class']['1'][subject]
+                  cl1sample = county['fluency']['class']['1'][subject]
+                  if cl1sample.nil?
+                    cl1average = "no data"
+                  else
+                    if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                      cl1sampleTotal += cl1sample['size']
+                      cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
+                    else
+                      cl1average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl1benchmark = cl1sample['metBenchmark']
+                      cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
+                    end
+                  end
+
+                  cl2sample = county['fluency']['class']['2'][subject]
+                  if cl2sample.nil?
+                    cl2average = "no data"
+                  else
+                    if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                      cl2sampleTotal += cl2sample['size']
+                      cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                    else
+                      cl2average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl2benchmark = cl2sample['metBenchmark']
+                      cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                    end
+                  end
+                  "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                }.join}
+              </tr>
+            "}.join }
+            <tr>
+              <td>All</td>
+              <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
+              #{reportSettings['fluency']['subjects'].map{ | subject |
+                cl1sample = result['visits']['national']['fluency']['class']['1'][subject]
+                if cl1sample.nil?
+                  cl1average = "no data"
+                else
+                  if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                    cl1sampleTotal = cl1sample['size']
+                    cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
+                  else
+                    cl1average = '0'
+                  end
+
+                  if subject == "operation"
+                    cl1benchmark = cl1sample['metBenchmark']
+                    cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
+                  end
+                end
+
+                cl2sample = result['visits']['national']['fluency']['class']['2'][subject]
+                if cl2sample.nil?
+                  cl2average = "no data"
+                else
+                  if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                    cl2sampleTotal = cl2sample['size']
+                    cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                  else
+                    cl2average = '0'
+                  end
+
+                  if subject == "operation"
+                    cl2benchmark = cl2sample['metBenchmark']
+                    cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                  end
+                end
+                "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+              }.join}
+            </tr>
+        </tbody>
+      </table>
+    "
+
+    mathsZoneTableHtml = "
+      <label for='tutor-county-select'>County</label>
+        <select id='tutor-county-select'>
+          #{
+            orderedCounties = result['visits']['byCounty'].sort_by{ |countyId, county| county['name'] }
+            orderedCounties.map{ | countyId, county |
+              "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
+            }.join("")
+          }
+        </select>
+      <table class='tacTutor-table'>
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
+            #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
+              "<th class='custSort'>
+                #{subjectLegend[subject]} - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
+              </th><th class='custSort'>
+                #{subjectLegend[subject]} - Class 2<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
+              </th>"
+            }.join}
+          </tr>
+        </thead>
+        <tbody>
+          #{result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+
+            row += 1
+
+            zoneName = zone['name']
+            visits = zone['visits']
+            quota = zone['quota']
+            met = zone['fluency']['metBenchmark']
+            cl1sampleTotal = 0
+            cl2sampleTotal = 0
+            
+            # Do we still need this?
+            #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
+
+          "
+            <tr> 
+              <td>#{zoneName}</td>
+              <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+              #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
+                
+                cl1sample = zone['fluency']['class']['1'][subject]
+                  if cl1sample.nil?
+                    cl1average = "no data"
+                  else
+                    if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                      cl1sampleTotal += cl1sample['size']
+                      cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
+                    else
+                      cl1average = '0'
+                    end
+
+                    if subject == "operation"
+                      cl1benchmark = cl1sample['metBenchmark']
+                      cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
+                    end
+                  end
+
+                  cl2sample = zone['fluency']['class']['2'][subject]
+                  if cl2sample.nil?
+                    cl2average = "no data"
+                  else
+                    if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                      cl2sampleTotal += cl2sample['size']
+                      cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                    else
+                      cl2average = '0'
+                    end
+
+                    if subject == "operation"
+                      cl2benchmark = cl2sample['metBenchmark']
+                      cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                    end
+                  end
+                  "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+              }.join}
+
+            </tr>
+          "}.join }
+        </tbody>
+      </table>
+      <small>
+
+      <ol>
+        <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
+        <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
+        <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
+        <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1 or class 2, out of all of the students assessed for those subjects.</li>
+      </ol>
+      </small>
+
+    "
 
     #************************ Tab Definition ************************
     tutorTabContent = "
@@ -784,6 +1017,30 @@ class Brockman < Sinatra::Base
       <br>
       <a id='esqac-view-all-btn' class='btn' href='#'>View All County Data</a>
     "
+
+    mathTabContent = "
+      <h2>CSO Math Observations Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
+      <hr>
+      <h2>Counties</h2>
+      #{mathsCountyTableHtml}
+      <br>
+      <div id='charts'>
+        <span id='charts-loading'>Loading charts...</span>
+      </div>
+
+      <br>
+
+      <h2>
+        #{titleize(currentCountyName)} County Report
+      </h2>
+      #{mathsZoneTableHtml}
+      
+      
+      <div id='tutor-map-loading'>Please wait. Data loading...</div>
+      <div id='tutor-map' style='height: 400px'></div>
+      <br>
+      <a id='tutor-view-all-btn' class='btn' href='#'>View All County Data</a>
+      "
 
     html =  "
     <html>
@@ -1162,6 +1419,7 @@ class Brockman < Sinatra::Base
           <section id='panel-esqac' class='tab-panel' style='display:none;'>
             #{esqacTabContent}
           </section>
+          
         </div>
         
         
