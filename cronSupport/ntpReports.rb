@@ -314,7 +314,7 @@ class NtpReports
       monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
 
       #puts "trip user: #{username} - in result #{result['users']['all'][username].nil?}"
-      return if monthData['result']['users']['all'][username].nil?
+      #return if monthData['result']['users']['all'][username].nil?
       
       #ensure that the user exists in the db and in the result-set
       if monthData['result']['users']['all'][username].nil?
