@@ -62,6 +62,16 @@ class NtpReports
     templates['result']['visits']['esqac']['national']['compensation']  ||= 0
     templates['result']['visits']['esqac']['national']['fluency']       ||= {}
 
+    #Maths observations
+    templates['result']['visits']['maths']                              ||= {}
+    templates['result']['visits']['maths']['byCounty']                  ||= {}
+    templates['result']['visits']['maths']['national']                  ||= {}
+    templates['result']['visits']['maths']['national']['visits']        ||= 0
+    templates['result']['visits']['maths']['national']['quota']         ||= 0
+    templates['result']['visits']['maths']['national']['numTeachers']   ||= 0
+    templates['result']['visits']['maths']['national']['compensation']  ||= 0
+    templates['result']['visits']['maths']['national']['fluency']       ||= {}
+
     templates['result']['users']           ||= {}  #stores list of all users and zone associations
     templates['result']['users']['all']    ||= {}  #stores list of all users
 
@@ -111,7 +121,22 @@ class NtpReports
       
 
       templates['result']['visits']['byCounty'][countyId]['quota']    = county['quota']
-        
+      
+      #maths
+      templates['result']['visits']['maths']['byCounty'][countyId]                              ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['name']                      ||= county['label']
+      templates['result']['visits']['maths']['byCounty'][countyId]['subCounties']               ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['zones']                     ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['visits']                    ||= 0
+      templates['result']['visits']['maths']['byCounty'][countyId]['quota']                     ||= 0
+      templates['result']['visits']['maths']['byCounty'][countyId]['numTeachers']               ||= 0
+      templates['result']['visits']['maths']['byCounty'][countyId]['compensation']              ||= 0
+      templates['result']['visits']['maths']['byCounty'][countyId]['fluency']                   ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class']          ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1]       ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2]       ||= {}
+
+      templates['result']['visits']['maths']['byCounty'][countyId]['quota']    = county['quota']
 
       #manually flatten out the subCounty data level
       county['children'].map { | subCountyId, subCounty | 
@@ -130,6 +155,9 @@ class NtpReports
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['visits']   ||= 0
         templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['quota']    ||= 0
         
+        templates['result']['visits']['maths']['byCounty'][countyId]['subCounties'][subCountyId]             ||= {}
+        templates['result']['visits']['maths']['byCounty'][countyId]['subCounties'][subCountyId]['name']     ||= subCounty['label']
+        templates['result']['visits']['maths']['byCounty'][countyId]['subCounties'][subCountyId]['zones']    ||= []
 
         subCounty['children'].map { | zoneId, zone |
 
@@ -153,6 +181,28 @@ class NtpReports
           templates['result']['visits']['national']['numTeachers']                             += zone['numTeachers'].to_i
       
           templates['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['zones'].push(zoneId)
+
+          #maths
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['trips']          ||= []
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['visits']         ||= 0
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['numTeachers']    ||= 0
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['compensation']   ||= 0
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']        ||= {}
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']          ||= {}
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]       ||= {}
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]       ||= {}
+
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['quota']  += zone['quota'].to_i
+          templates['result']['visits']['maths']['national']['quota']                             += zone['quota'].to_i
+
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['numTeachers']  += zone['numTeachers'].to_i
+          templates['result']['visits']['maths']['byCounty'][countyId]['numTeachers']                   += zone['numTeachers'].to_i
+          templates['result']['visits']['maths']['national']['numTeachers']                             += zone['numTeachers'].to_i
+      
+          templates['result']['visits']['maths']['byCounty'][countyId]['subCounties'][subCountyId]['zones'].push(zoneId)
 
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
@@ -351,35 +401,79 @@ class NtpReports
       monthData['result']['visits']['national']['visits']                                           += 1
       monthData['result']['visits']['byCounty'][countyId]['visits']                                 += 1 
       monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']                += 1
-
       
-      #
-      # Process geoJSON data for mapping
-      #
-      if !trip['value']['gpsData'].nil?
-        point = trip['value']['gpsData']
+      #check workflowid=maths observations
+      if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
+        monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
+        monthData['result']['visits']['maths']['national']['visits']                                += 1
+        monthData['result']['visits']['maths']['byCounty'][countyId]['visits']                      += 1 
+        monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['visits']     += 1
+        
+        #
+        # Process geoJSON data for mapping
+        #
+        if !trip['value']['gpsData'].nil?
+          point = trip['value']['gpsData']
 
-        if !@timezone.nil?
-          startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
-        else 
-          startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+          if !@timezone.nil?
+            startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+          else 
+            startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+          end
+
+          point['role'] = "maths"
+          point['properties'] = [
+            { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
+            { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
+            { 'label' => 'Class',           'value' => trip['value']['class'] },
+            { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
+            { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
+            { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
+            { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
+            { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
+            { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+          ]
+
+          monthData['geoJSON']['byCounty'][countyId]['data'].push point
         end
 
-        point['role'] = userRole
-        point['properties'] = [
-          { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-          { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-          { 'label' => 'Class',           'value' => trip['value']['class'] },
-          { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
-          { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
-          { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-          { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
-          { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-          { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
-        ]
+      else
+        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
+        monthData['result']['visits']['national']['visits']                                         += 1
+        monthData['result']['visits']['byCounty'][countyId]['visits']                               += 1 
+        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
+        
+        #
+        # Process geoJSON data for mapping
+        #
+        if !trip['value']['gpsData'].nil?
+          point = trip['value']['gpsData']
 
-        monthData['geoJSON']['byCounty'][countyId]['data'].push point
+          if !@timezone.nil?
+            startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+          else 
+            startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+          end
+
+          point['role'] = userRole
+          point['properties'] = [
+            { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
+            { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
+            { 'label' => 'Class',           'value' => trip['value']['class'] },
+            { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
+            { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
+            { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
+            { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
+            { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
+            { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+          ]
+
+          monthData['geoJSON']['byCounty'][countyId]['data'].push point
+        end
+
       end
+
+      
 
 
       #
@@ -407,56 +501,112 @@ class NtpReports
         total = 0
         itemsPerMinute.each { | ipm | total += ipm }
 
-        monthData['result']['visits']['national']['fluency']['class']                              ||= {}
-        monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
-        monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
-        monthData['result']['visits']['national']['fluency']['class'][1][subject]['sum']           ||= 0
-        monthData['result']['visits']['national']['fluency']['class'][1][subject]['size']          ||= 0
-        monthData['result']['visits']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-        
-        monthData['result']['visits']['national']['fluency']['class'][2]                           ||= {}
-        monthData['result']['visits']['national']['fluency']['class'][2][subject]                  ||= {}
-        monthData['result']['visits']['national']['fluency']['class'][2][subject]['sum']           ||= 0
-        monthData['result']['visits']['national']['fluency']['class'][2][subject]['size']          ||= 0
-        monthData['result']['visits']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+        #check for maths workflow
+        if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
+          monthData['result']['visits']['maths']['national']['fluency']['class']                              ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
 
-        monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['sum']           += total
-        monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
-        monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
 
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class']                              ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-        
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
 
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
-        monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
 
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-        
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
 
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+        else
+          monthData['result']['visits']['national']['fluency']['class']                              ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['national']['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+        end
 
       end
 

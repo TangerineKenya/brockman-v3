@@ -31,7 +31,7 @@ class Brockman < Sinatra::Base
       :db        => group
     })
 
-    subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
+    subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation"=>"Maths" } 
 
     #
     # get Group settings
@@ -127,6 +127,11 @@ class Brockman < Sinatra::Base
       var datasetScores = Array()
       var datasetObservationsPublic = Array();
       var datasetObservationsAPBET = Array();
+      //maths
+      var datasetMathsObservationsPublic = Array();
+      var datasetMathsObservationsAPBET = Array();
+      var datasetMathsObservationsZone =  Array();
+
       var dates = Array();
       var months = {
         1:'January',
@@ -164,7 +169,7 @@ class Brockman < Sinatra::Base
         // loop over data and build d3 friendly dataset 
         dates.forEach(function(el){
           var tmpset = Array();
-	  console.log(el);
+          console.log(el);
           for(var county in el.data.visits.byCounty)
           {
             var tmpCounty = titleize(safeRead(el.data.visits.byCounty[county], 'name'));
@@ -212,6 +217,67 @@ class Brockman < Sinatra::Base
                           
             datasetScores.push(tmp);
           }
+
+          //maths data
+          for(var county in el.data.visits.maths.byCounty)
+          {
+            var tmpCounty = titleize(safeRead(el.data.visits.maths.byCounty[county], 'name'));
+            var tmp = {
+              County   : tmpCounty,
+              MonthInt : el.month,
+              Year     : el.year,
+              Month    : months[el.month]
+            };
+            
+            var tmpVisit = {};
+            var countyVisits = safeRead(el.data.visits.maths.byCounty[county], 'visits');
+            var countyQuota = safeRead(el.data.visits.maths.byCounty[county],'quota');
+            if (countyVisits == 0 || countyQuota == 0){
+              tmpVisit['Visit Attainment'] = 0;
+            } else {
+              tmpVisit['Visit Attainment'] = countyVisits / countyQuota * 100;
+            }
+
+            if(tmpCounty.search(/apbet/i) == -1){
+              datasetMathsObservationsPublic.push($.extend({}, tmp, tmpVisit));
+            } else {
+              datasetMathsObservationsAPBET.push($.extend({}, tmp, tmpVisit));
+            }
+
+            if(isNaN(tmpVisit['Visit Attainment'])) delete tmpVisit['Visit Attainment'];
+            
+            tmp['Maths Score - Class 1'] = safeRead(el.data.visits.maths.byCounty[county].fluency.class[1],'operation','sum')/safeRead(el.data.visits.maths.byCounty[county].fluency.class[1],'operation','size');
+            tmp['Maths Score - Class 2'] = safeRead(el.data.visits.maths.byCounty[county].fluency.class[2],'operation','sum')/safeRead(el.data.visits.maths.byCounty[county].fluency.class[2],'operation','size');
+            if(isNaN(tmp['Maths Score - Class 1'])) { delete tmp['Maths Score - Class 1'] };
+            if(isNaN(tmp['Maths Score - Class 2'])) { delete tmp['Maths Score - Class 2'] };
+                          
+            datasetScores.push(tmp);
+          }
+
+          //zone data
+            var countyId  = '#{countyId}';
+            for(var zone in el.data.visits.maths.byCounty[countyId].zones)
+            {
+              var tmpZone = titleize(safeRead(el.data.visits.maths.byCounty[countyId].zones[zone], 'name'));
+              var tmpZoneData = {
+                Zone   : tmpZone,
+                MonthInt : el.month,
+                Year     : el.year,
+                Month    : months[el.month]
+              };
+
+              var tmpZoneVisit = {};
+              var zoneVisits = safeRead(el.data.visits.maths.byCounty[countyId].zones[zone], 'visits');
+              var zoneQuota = safeRead(el.data.visits.maths.byCounty[countyId].zones[zone],'quota');
+
+              if (zoneVisits == 0 || zoneQuota == 0){
+              tmpZoneVisit['Visit Attainment'] = 0;
+              } else {
+                tmpZoneVisit['Visit Attainment'] =  zoneVisits / zoneQuota * 100;
+              }
+              
+              datasetMathsObservationsZone.push($.extend({}, tmpZoneData, tmpZoneVisit));
+            }
         })
         
         // Build the charts. 
@@ -219,13 +285,16 @@ class Brockman < Sinatra::Base
         addChart(datasetScores, 'English Score - Class 2', 'English Score - Class 2', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 1', 'Kiswahili Score - Class 1', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 2', 'Kiswahili Score - Class 2', 'Correct Items Per Minute');
-        addChart(datasetScores, 'Maths Score - Class 1', 'Maths Score - Class 1', 'Correct Items Per Minute');
-        addChart(datasetScores, 'Maths Score - Class 2', 'Maths Score - Class 2', 'Correct Items Per Minute');
+        //addMathsChart(datasetScores, 'Maths Score - Class 1', 'Maths Score - Class 1', 'Correct Items Per Minute');
+        //addMathsChart(datasetScores, 'Maths Score - Class 2', 'Maths Score - Class 2', 'Correct Items Per Minute');
         //addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
         addChart(datasetObservationsPublic, 'Visit Attainment', 'Classroom Observations (Public)','Percentage');
         addChart(datasetObservationsAPBET, 'Visit Attainment', 'Classroom Observations (APBET)','Percentage');
+        //maths
+        addMathsChart(datasetMathsObservationsPublic, 'Visit Attainment', 'Classroom Observations (County)','Percentage');
+        addMathsZoneChart(datasetMathsObservationsZone, 'Visit Attainment', 'Classroom Observations (Zone)','Percentage');
         $('#charts-loading').remove()
-
+        $('#maths-charts-loading').remove()
       }     
 
     
@@ -269,6 +338,86 @@ class Brockman < Sinatra::Base
         buildChart(chartObject);
       }
       
+      function addMathsChart(dataset, variable, title, xaxis)
+      {
+        // create the element that the chart lives in
+        var domid = (new Date()).getTime();
+        $('#maths-charts').append('<div class=\"chart\"><h2 style=\"text-align:center;\">'+title+'</h2><div id=\"chartContainer'+domid+'\" /></div>');
+
+        // start building chart object to pass to render function
+        chartObject = new Object();
+        chartObject.container = '#chartContainer'+domid;
+        chartObject.height = 650;
+        chartObject.width = 450;
+        chartObject.data =  dataset;
+        
+        chartObject.plot = function(chart){
+
+          // setup x, y and series
+          var y = chart.addCategoryAxis('y', ['County','Month']);
+          y.addOrderRule('County');
+          y.addGroupOrderRule('MonthInt');
+
+          var x = chart.addMeasureAxis('x', variable);
+
+          var series = chart.addSeries(['Month'], dimple.plot.bar);
+          series.addOrderRule('MonthInt');
+          series.clusterBarGap = 0;
+          
+          // add the legend
+          //chart.addLegend(chartObject.width-100, chartObject.height/2-25, 100,  150, 'left');
+          chart.addLegend(60, 10, 400, 20, 'right');
+        };
+        
+        // titles for x and y axis
+        chartObject.yAxis = 'County';
+        chartObject.xAxis = xaxis;
+        
+        // show hover tooltips
+        chartObject.showHover = true;
+        buildChart(chartObject);
+      }
+
+      function addMathsZoneChart(dataset, variable, title, xaxis)
+      {
+        // create the element that the chart lives in
+        var domid = (new Date()).getTime();
+        $('#maths-charts').append('<div class=\"chart\"><h2 style=\"text-align:center;\">'+title+'</h2><div id=\"chartContainer'+domid+'\" /></div>');
+
+        // start building chart object to pass to render function
+        chartObject = new Object();
+        chartObject.container = '#chartContainer'+domid;
+        chartObject.height = 650;
+        chartObject.width = 450;
+        chartObject.data =  dataset;
+        
+        chartObject.plot = function(chart){
+
+          // setup x, y and series
+          var y = chart.addCategoryAxis('y', ['Zone','Month']);
+          y.addOrderRule('Zone');
+          y.addGroupOrderRule('MonthInt');
+
+          var x = chart.addMeasureAxis('x', variable);
+
+          var series = chart.addSeries(['Month'], dimple.plot.bar);
+          series.addOrderRule('MonthInt');
+          series.clusterBarGap = 0;
+          
+          // add the legend
+          //chart.addLegend(chartObject.width-100, chartObject.height/2-25, 100,  150, 'left');
+          chart.addLegend(60, 10, 400, 20, 'right');
+        };
+        
+        // titles for x and y axis
+        chartObject.yAxis = 'Zone';
+        chartObject.xAxis = xaxis;
+        
+        // show hover tooltips
+        chartObject.showHover = true;
+        buildChart(chartObject);
+      }
+
       function buildChart(chart)
       {
         var svg = dimple.newSvg(chart.container, chart.width, chart.height);
@@ -398,10 +547,10 @@ class Brockman < Sinatra::Base
                       cl1average = '0'
                     end
 
-                    #if subject != "operation"
+                    if subject != "operation"
                       cl1benchmark = cl1sample['metBenchmark']
                       cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                    #end
+                    end
                   end
 
                   cl2sample = county['fluency']['class']['2'][subject]
@@ -415,10 +564,10 @@ class Brockman < Sinatra::Base
                       cl2average = '0'
                     end
 
-                    #if subject != "operation"
+                    if subject != "operation"
                       cl2benchmark = cl2sample['metBenchmark']
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                    #end
+                    end
                   end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>"
@@ -440,10 +589,10 @@ class Brockman < Sinatra::Base
                     cl1average = '0'
                   end
 
-                  #if subject != "operation"
+                  if subject != "operation"
                     cl1benchmark = cl1sample['metBenchmark']
                     cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                  #end
+                  end
                 end
 
                 cl2sample = result['visits']['national']['fluency']['class']['2'][subject]
@@ -457,10 +606,10 @@ class Brockman < Sinatra::Base
                     cl2average = '0'
                   end
 
-                  #if subject != "operation"
+                  if subject != "operation"
                     cl2benchmark = cl2sample['metBenchmark']
                     cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                  #end
+                  end
                 end
                 "<td>#{cl1average} <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>"
@@ -531,10 +680,10 @@ class Brockman < Sinatra::Base
                       cl1average = '0'
                     end
 
-                    #if subject != "operation"
+                    if subject != "operation"
                       cl1benchmark = cl1sample['metBenchmark']
                       cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                    #end
+                    end
                   end
 
                   cl2sample = zone['fluency']['class']['2'][subject]
@@ -548,10 +697,10 @@ class Brockman < Sinatra::Base
                       cl2average = '0'
                     end
 
-                    #if subject != "operation"
+                    if subject != "operation"
                       cl2benchmark = cl2sample['metBenchmark']
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                    #end
+                    end
                   end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>"
@@ -724,30 +873,20 @@ class Brockman < Sinatra::Base
       </table>
 
     "
-    #***************************** Math Report components ***************************
+    #***************************** Maths Report components ***************************
     row = 0
     mathsCountyTableHtml = "
-      <table class='tacTutor-table'>
+      <table class='maths-table'>
         <thead>
           <tr>
             <th>County</th>
-            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort' align='left'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-
-            #{reportSettings['fluency']['subjects'].map{ | subject |
-              "<th class='custSort'>#{subjectLegend[subject]} - Class 1<br>
-                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
-                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
-              </th>
-              <th class='custSort'>#{subjectLegend[subject]} - Class 2<br>
-                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
-                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
-              </th>"
-            }.join}
+            
           </tr>
         </thead>
         <tbody>
-          #{ result['visits']['byCounty'].map{ | countyId, county |
+        #{ result['visits']['maths']['byCounty'].map{ | countyId, county |
 
             countyName      = county['name']
             visits          = county['visits']
@@ -755,132 +894,77 @@ class Brockman < Sinatra::Base
             cl1sampleTotal = 0
             cl2sampleTotal = 0
 
-            "
-              <tr>
+            puts county['fluency']
+            puts countyId
+            puts county['fluency']['class']
+            puts county['fluency']['class']['1']
+            puts county['fluency']['class']['1']['operation']
+            cl1sample = county['fluency']['class']['1']['operation']
+            if cl1sample.nil?
+              cl1average = "no data"
+            else
+              if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                cl1sampleTotal += cl1sample['size']
+                cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
+              else
+                cl1average = '0'
+              end                   
+                cl1benchmark = cl1sample['metBenchmark']
+                cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
+                    
+            end
+
+            cl2sample = county['fluency']['class']['2']['operation']
+            if cl2sample.nil?
+              cl2average = "no data"
+            else
+            if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+              cl2sampleTotal += cl2sample['size']
+              cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+            else
+              cl2average = '0'
+            end                 
+              cl2benchmark = cl2sample['metBenchmark']
+              cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
+                   
+          end
+            
+            "<tr>
                 <td>#{titleize(countyName)}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                #{reportSettings['fluency']['subjects'].map{ | subject |
-                  #ensure that there, at minimum, a fluency category for the county
-                  
-                  puts county['fluency']
-                  puts countyId
-                  puts county['fluency']['class']
-                  puts county['fluency']['class']['1']
-                  puts county['fluency']['class']['1'][subject]
-                  cl1sample = county['fluency']['class']['1'][subject]
-                  if cl1sample.nil?
-                    cl1average = "no data"
-                  else
-                    if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
-                      cl1sampleTotal += cl1sample['size']
-                      cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
-                    else
-                      cl1average = '0'
-                    end
-
-                    if subject != "operation"
-                      cl1benchmark = cl1sample['metBenchmark']
-                      cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                    end
-                  end
-
-                  cl2sample = county['fluency']['class']['2'][subject]
-                  if cl2sample.nil?
-                    cl2average = "no data"
-                  else
-                    if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
-                      cl2sampleTotal += cl2sample['size']
-                      cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
-                    else
-                      cl2average = '0'
-                    end
-
-                    if subject != "operation"
-                      cl2benchmark = cl2sample['metBenchmark']
-                      cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                    end
-                  end
-                  "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
-                }.join}
-              </tr>
-            "}.join }
-            <tr>
-              <td>All</td>
-              <td>#{result['visits']['national']['visits']} ( #{percentage( result['visits']['national']['quota'], result['visits']['national']['visits'] )}% )</td>
-              #{reportSettings['fluency']['subjects'].map{ | subject |
-                cl1sample = result['visits']['national']['fluency']['class']['1'][subject]
-                if cl1sample.nil?
-                  cl1average = "no data"
-                else
-                  if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
-                    cl1sampleTotal = cl1sample['size']
-                    cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
-                  else
-                    cl1average = '0'
-                  end
-
-                  if subject == "operation"
-                    cl1benchmark = cl1sample['metBenchmark']
-                    cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                  end
-                end
-
-                cl2sample = result['visits']['national']['fluency']['class']['2'][subject]
-                if cl2sample.nil?
-                  cl2average = "no data"
-                else
-                  if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
-                    cl2sampleTotal = cl2sample['size']
-                    cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
-                  else
-                    cl2average = '0'
-                  end
-
-                  if subject == "operation"
-                    cl2benchmark = cl2sample['metBenchmark']
-                    cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                  end
-                end
-                "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
-              }.join}
+                
             </tr>
-        </tbody>
+            "}.join}
+             <tr>
+              <td>All</td>
+              <td>#{result['visits']['maths']['national']['visits']} ( #{percentage( result['visits']['maths']['national']['quota'], result['visits']['maths']['national']['visits'] )}% )</td>
+              
+            </tr>
+      </tbody>
       </table>
     "
 
     mathsZoneTableHtml = "
-      <label for='tutor-county-select'>County</label>
-        <select id='tutor-county-select'>
+      <label for='maths-county-select'>County</label>
+        <select id='maths-county-select'>
           #{
-            orderedCounties = result['visits']['byCounty'].sort_by{ |countyId, county| county['name'] }
+            orderedCounties = result['visits']['maths']['byCounty'].sort_by{ |countyId, county| county['name'] }
             orderedCounties.map{ | countyId, county |
               "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
             }.join("")
           }
         </select>
-      <table class='tacTutor-table'>
+      <table class='maths-table'>
         <thead>
           <tr>
             <th>Zone</th>
-            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort' align='left'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-              "<th class='custSort'>
-                #{subjectLegend[subject]} - Class 1<br>
-                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
-                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
-              </th><th class='custSort'>
-                #{subjectLegend[subject]} - Class 2<br>
-                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
-                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject == "operation"}
-              </th>"
-            }.join}
+           
           </tr>
         </thead>
         <tbody>
-          #{result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+          #{result['visits']['maths']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
 
             row += 1
 
@@ -891,6 +975,33 @@ class Brockman < Sinatra::Base
             cl1sampleTotal = 0
             cl2sampleTotal = 0
             
+            cl1sample = zone['fluency']['class']['1']['operation']
+            if cl1sample.nil?
+                    cl1average = "no data"
+              else
+                if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
+                  cl1sampleTotal += cl1sample['size']
+                  cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
+                else
+                  cl1average = '0'
+                end
+                  cl1benchmark = cl1sample['metBenchmark']
+                  cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"  
+            end
+              cl2sample = zone['fluency']['class']['2']['operation']
+              if cl2sample.nil?
+                cl2average = "no data"
+              else
+                if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                  cl2sampleTotal += cl2sample['size']
+                  cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+                else
+                  cl2average = '0'
+                end
+                  cl2benchmark = cl2sample['metBenchmark']
+                  cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )" 
+          end
+
             # Do we still need this?
             #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
 
@@ -898,46 +1009,8 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{zoneName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-              #{reportSettings['fluency']['subjects'].select{|x|x!="3" && !x.nil?}.map{ | subject |
-                
-                cl1sample = zone['fluency']['class']['1'][subject]
-                  if cl1sample.nil?
-                    cl1average = "no data"
-                  else
-                    if cl1sample && cl1sample['size'] != 0 && cl1sample['sum'] != 0
-                      cl1sampleTotal += cl1sample['size']
-                      cl1average = ( cl1sample['sum'] / cl1sample['size'] ).round
-                    else
-                      cl1average = '0'
-                    end
 
-                    if subject == "operation"
-                      cl1benchmark = cl1sample['metBenchmark']
-                      cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
-                    end
-                  end
-
-                  cl2sample = zone['fluency']['class']['2'][subject]
-                  if cl2sample.nil?
-                    cl2average = "no data"
-                  else
-                    if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
-                      cl2sampleTotal += cl2sample['size']
-                      cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
-                    else
-                      cl2average = '0'
-                    end
-
-                    if subject == "operation"
-                      cl2benchmark = cl2sample['metBenchmark']
-                      cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
-                    end
-                  end
-                  "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
-              }.join}
-
-            </tr>
+              </tr>
           "}.join }
         </tbody>
       </table>
@@ -946,8 +1019,6 @@ class Brockman < Sinatra::Base
       <ol>
         <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
         <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
-        <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
-        <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1 or class 2, out of all of the students assessed for those subjects.</li>
       </ol>
       </small>
 
@@ -1019,13 +1090,13 @@ class Brockman < Sinatra::Base
     "
 
     mathTabContent = "
-      <h2>CSO Math Observations Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
+      <h2>Maths Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
       <hr>
       <h2>Counties</h2>
       #{mathsCountyTableHtml}
       <br>
-      <div id='charts'>
-        <span id='charts-loading'>Loading charts...</span>
+      <div id='maths-charts'>
+        <span id='maths-charts-loading'>Loading charts...</span>
       </div>
 
       <br>
@@ -1036,10 +1107,10 @@ class Brockman < Sinatra::Base
       #{mathsZoneTableHtml}
       
       
-      <div id='tutor-map-loading'>Please wait. Data loading...</div>
-      <div id='tutor-map' style='height: 400px'></div>
+      <div id='maths-map-loading'>Please wait. Data loading...</div>
+      <div id='maths-map' style='height: 400px'></div>
       <br>
-      <a id='tutor-view-all-btn' class='btn' href='#'>View All County Data</a>
+      <a id='maths-view-all-btn' class='btn' href='#'>View All County Data</a>
       "
 
     html =  "
@@ -1131,6 +1202,18 @@ class Brockman < Sinatra::Base
                 return (feature.role === 'tac-tutor' || feature.role === 'coach');
               }
             },
+            maths: {
+              osm: new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                minZom: 1,
+                maxZoom: 12,
+                attribution: 'Map data © OpenStreetMap contributors'
+              }),
+              layerControl: L.control.layers.provided(['OpenStreetMap.Mapnik','Stamen.Watercolor']),
+              markers: L.markerClusterGroup(),
+              layerGeoJsonFilter: function(feature, layer){
+                return (feature.role === 'maths');
+              }
+            },
             scde: {
               osm: new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 minZom: 1,
@@ -1203,6 +1286,12 @@ class Brockman < Sinatra::Base
               iDisplayLength :-1, 
               sDom : 't'
             });
+
+            //init display for the Maths Tab
+            $('table.maths-table').dataTable( { 
+              iDisplayLength :-1, 
+              sDom : 't'
+            });
               
             /***********
             **
@@ -1229,6 +1318,11 @@ class Brockman < Sinatra::Base
               reloadReport();
             });
 
+            $('#maths-county-select').on('change',function() {
+              currCounty = $('#maths-county-select').val()
+              reloadReport();
+            });
+
             function reloadReport(){
               year    = $('#year-select').val().toLowerCase()
               month   = $('#month-select').val().toLowerCase()
@@ -1249,6 +1343,7 @@ class Brockman < Sinatra::Base
             pageMaps.tutor = new L.Map('tutor-map');
             pageMaps.scde  = new L.Map('scde-map');
             pageMaps.esqac = new L.Map('esqac-map');
+            pageMaps.maths = new L.Map('maths-map');
             
             //----------- TUTOR MAP CONFIG -------------------------
             pageMaps.tutor.addLayer(mapControls.tutor.osm);
@@ -1310,6 +1405,25 @@ class Brockman < Sinatra::Base
               $('#esqac-view-all-btn').hide();
             });
 
+            //----------- MATHS MAP CONFIG -------------------------
+            pageMaps.maths.addLayer(mapControls.maths.osm);
+            pageMaps.maths.setView(new L.LatLng(0, 35), 6);
+            mapControls.maths.layerControl.addTo(pageMaps.maths);
+            mapControls.maths.geoJsonLayer = new L.GeoJSON.AJAX(mapDataURL['current'], {
+              onEachFeature: layerOnEachFeature,
+              filter: mapControls.maths.layerGeoJsonFilter
+            });
+            mapControls.maths.geoJsonLayer.on('data:loaded', function(){
+              if ( mapControls.maths.markers == null || pageMaps.maths == null || mapControls.maths.geoJsonLayer == null ) { return; }
+              mapControls.maths.markers.addLayer(mapControls.maths.geoJsonLayer);
+              pageMaps.maths.addLayer(mapControls.maths.markers);
+              $('#maths-map-loading').hide();
+            });
+            $('#maths-view-all-btn').on('click', function(event){
+              mapControls.maths.geoJsonLayer.refresh(mapDataURL['all']);
+              $('#maths-map-loading').show();
+              $('#maths-view-all-btn').hide();
+            });
 
             /*
             var
@@ -1409,7 +1523,8 @@ class Brockman < Sinatra::Base
         <div class='tab_container'>
           <div id='tab-tutor' class='tab first selected' data-id='tutor'>CSO</div>
           <div id='tab-scde' class='tab' data-id='scde'>SCDE</div>
-          <div id='tab-esqac' class='tab last' data-id='esqac'>ESQAC</div>
+          <div id='tab-esqac' class='tab' data-id='esqac'>ESQAC</div>
+          <div id='tab-maths' class='tab last' data-id='maths'>MATHS</div>
           <section id='panel-tutor' class='tab-panel' style=''>
             #{tutorTabContent}
           </section>
@@ -1419,7 +1534,9 @@ class Brockman < Sinatra::Base
           <section id='panel-esqac' class='tab-panel' style='display:none;'>
             #{esqacTabContent}
           </section>
-          
+          <section id='panel-maths' class='tab-panel' style='display:none;'>
+            #{mathTabContent}
+          </section>
         </div>
         
         
