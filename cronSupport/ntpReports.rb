@@ -398,9 +398,9 @@ class NtpReports
 
       monthData['result']['users']['all'][username]['total']['visits']                              += 1
 
-      monthData['result']['visits']['national']['visits']                                           += 1
-      monthData['result']['visits']['byCounty'][countyId]['visits']                                 += 1 
-      monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']                += 1
+      #monthData['result']['visits']['national']['visits']                                           += 1
+      #monthData['result']['visits']['byCounty'][countyId]['visits']                                 += 1 
+      #monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']                += 1
       
       #check workflowid=maths observations
       if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
