@@ -1125,13 +1125,13 @@ class Brockman < Sinatra::Base
 
         <script src='http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js'></script>
 
-        <script src='/javascript/base64.js'></script>
+        <script src='#{$settings[:basePath]}/javascript/base64.js'></script>
         <script src='http://code.jquery.com/jquery-1.11.0.min.js'></script>
         <script src='http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js'></script>
         <script src='http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js'></script>
         <script src='http://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/0.4.0/leaflet.markercluster.js'></script>
-        <script src='/javascript/leaflet/leaflet-providers.js'></script>
-        <script src='/javascript/leaflet/leaflet.ajax.min.js'></script>
+        <script src='#{$settings[:basePath]}/javascript/leaflet/leaflet-providers.js'></script>
+        <script src='#{$settings[:basePath]}/javascript/leaflet/leaflet.ajax.min.js'></script>
 
         <script src='http://d3js.org/d3.v3.min.js'></script>
         <script src='http://dimplejs.org/dist/dimple.v2.0.0.min.js'></script>
@@ -1502,6 +1502,7 @@ class Brockman < Sinatra::Base
           <option #{"selected" if year == "2014"}>2014</option>
           <option #{"selected" if year == "2015"}>2015</option>
           <option #{"selected" if year == "2016"}>2016</option>
+          <option #{"selected" if year == "2017"}>2017</option>
         </select>
 
         <label for='month-select'>Month</label>
