@@ -358,7 +358,7 @@ class NtpReports
     #
     # Handle Role-specific calculations
     #
-    if userRole == "tac-tutor" or userRole == "coach" or userRole == "cso" or userRole == "CSO"
+    if userRole == "tac-tutor" or userRole == "coach" or userRole == "Coach" or userRole == "cso" or userRole == "CSO"
 
       #skip these steps if either the county or zone are no longer in the primary list 
       return err(false, "Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
@@ -683,7 +683,7 @@ class NtpReports
         monthData['geoJSON']['byCounty'][countyId]['data'].push point
       end
 
-    elsif userRole == "esqac"
+    elsif userRole == "esqac" or userRole == "ESQAC"
       puts "** processing ESQAC Trip"
       #skip these steps if either the county or zone are no longer in the primary list 
       return err(true, "ESQAC: Missing County") if monthData['result']['visits']['esqac']['byCounty'][countyId].nil?
