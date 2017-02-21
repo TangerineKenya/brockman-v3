@@ -199,13 +199,17 @@ class Brockman < Sinatra::Base
             
             tmp['English Score - Class 1'] = safeRead(el.data.visits.byCounty[county].fluency.class[1],'english_word','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[1],'english_word','size');
             tmp['English Score - Class 2'] = safeRead(el.data.visits.byCounty[county].fluency.class[2],'english_word','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[2],'english_word','size');
+            tmp['English Score - Class 3'] = safeRead(el.data.visits.byCounty[county].fluency.class[3],'english_word','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[3],'english_word','size');
             if(isNaN(tmp['English Score - Class 1'])) { delete tmp['English Score - Class 1'] };
             if(isNaN(tmp['English Score - Class 2'])) { delete tmp['English Score - Class 2'] };
+            if(isNaN(tmp['English Score - Class 3'])) { delete tmp['English Score - Class 3'] };
             
             tmp['Kiswahili Score - Class 1'] = safeRead(el.data.visits.byCounty[county].fluency.class[1],'word','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[1],'word','size');
             tmp['Kiswahili Score - Class 2'] = safeRead(el.data.visits.byCounty[county].fluency.class[2],'word','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[2],'word','size');
+            tmp['Kiswahili Score - Class 3'] = safeRead(el.data.visits.byCounty[county].fluency.class[3],'word','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[3],'word','size');
             if(isNaN(tmp['Kiswahili Score - Class 1'])) { delete tmp['Kiswahili Score - Class 1'] };
             if(isNaN(tmp['Kiswahili Score - Class 2'])) { delete tmp['Kiswahili Score - Class 2'] };
+            if(isNaN(tmp['Kiswahili Score - Class 3'])) { delete tmp['Kiswahili Score - Class 3'] };
 
             //tmp['Math Score'] = safeRead(el.data.visits.byCounty[county].fluency,'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency,'operation','size');
             //if(isNaN(tmp['Math Score'])) { delete tmp['Math Score'] };
@@ -283,8 +287,10 @@ class Brockman < Sinatra::Base
         // Build the charts. 
         addChart(datasetScores, 'English Score - Class 1', 'English Score - Class 1', 'Correct Items Per Minute');
         addChart(datasetScores, 'English Score - Class 2', 'English Score - Class 2', 'Correct Items Per Minute');
+        addChart(datasetScores, 'English Score - Class 3', 'English Score - Class 3', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 1', 'Kiswahili Score - Class 1', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 2', 'Kiswahili Score - Class 2', 'Correct Items Per Minute');
+        addChart(datasetScores, 'Kiswahili Score - Class 3', 'Kiswahili Score - Class 3', 'Correct Items Per Minute');
         //addMathsChart(datasetScores, 'Maths Score - Class 1', 'Maths Score - Class 1', 'Correct Items Per Minute');
         //addMathsChart(datasetScores, 'Maths Score - Class 2', 'Maths Score - Class 2', 'Correct Items Per Minute');
         //addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
@@ -511,6 +517,10 @@ class Brockman < Sinatra::Base
               <th class='custSort'>#{subjectLegend[subject]} - Class 2<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
+              </th>
+              <th class='custSort'>#{subjectLegend[subject]} - Class 3<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
             }.join}
           </tr>
@@ -523,6 +533,7 @@ class Brockman < Sinatra::Base
             quota           = county['quota']
             cl1sampleTotal = 0
             cl2sampleTotal = 0
+            cl3sampleTotal = 0
 
             "
               <tr>
@@ -569,8 +580,27 @@ class Brockman < Sinatra::Base
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                     end
                   end
+
+                  cl3sample = county['fluency']['class']['3'][subject]
+                  if cl3sample.nil?
+                    cl3average = "no data"
+                  else
+                    if cl3sample && cl3sample['size'] != 0 && cl3sample['sum'] != 0
+                      cl3sampleTotal += cl3sample['size']
+                      cl3average = ( cl3sample['sum'] / cl3sample['size'] ).round
+                    else
+                      cl3average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl3benchmark = cl3sample['metBenchmark']
+                      cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
+                    end
+                  end
+
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>
+                  <td>#{cl3average} <span>#{cl3percentage}</span></td>"
                 }.join}
               </tr>
             "}.join }
@@ -611,8 +641,26 @@ class Brockman < Sinatra::Base
                     cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                   end
                 end
+
+                cl3sample = result['visits']['national']['fluency']['class']['3'][subject]
+                if cl3sample.nil?
+                  cl3average = "no data"
+                else
+                  if cl3sample && cl3sample['size'] != 0 && cl3sample['sum'] != 0
+                    cl3sampleTotal = cl3sample['size']
+                    cl3average = ( cl3sample['sum'] / cl3sample['size'] ).round
+                  else
+                    cl2average = '0'
+                  end
+
+                  if subject != "operation"
+                    cl3benchmark = cl3sample['metBenchmark']
+                    cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
+                  end
+                end
                 "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>
+                  <td>#{cl3average} <span>#{cl3percentage}</span></td>"
               }.join}
             </tr>
         </tbody>
@@ -644,6 +692,11 @@ class Brockman < Sinatra::Base
                 #{subjectLegend[subject]} - Class 2<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
+              </th>
+              </th><th class='custSort'>
+                #{subjectLegend[subject]} - Class 3<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
             }.join}
           </tr>
@@ -659,6 +712,7 @@ class Brockman < Sinatra::Base
             met = zone['fluency']['metBenchmark']
             cl1sampleTotal = 0
             cl2sampleTotal = 0
+            cl3sampleTotal = 0
             
             # Do we still need this?
             #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
@@ -702,8 +756,26 @@ class Brockman < Sinatra::Base
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                     end
                   end
+
+                  cl3sample = zone['fluency']['class']['3'][subject]
+                  if cl3sample.nil?
+                    cl3average = "no data"
+                  else
+                    if cl3sample && cl3sample['size'] != 0 && cl3sample['sum'] != 0
+                      cl3sampleTotal += cl3sample['size']
+                      cl3average = ( cl3sample['sum'] / cl3sample['size'] ).round
+                    else
+                      cl3average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl3benchmark = cl3sample['metBenchmark']
+                      cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
+                    end
+                  end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>
+                  <td>#{cl3average} <span>#{cl3percentage}</span></td>"
               }.join}
 
             </tr>

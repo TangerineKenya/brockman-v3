@@ -45,6 +45,7 @@ class NtpReports
     templates['result']['visits']['national']['fluency']['class']          ||= {}
     templates['result']['visits']['national']['fluency']['class'][1]       ||= {}
     templates['result']['visits']['national']['fluency']['class'][2]       ||= {}
+    templates['result']['visits']['national']['fluency']['class'][3]       ||= {}
 
     templates['result']['visits']['scde']                              ||= {}
     templates['result']['visits']['scde']['national']                  ||= {}
@@ -101,6 +102,7 @@ class NtpReports
       templates['result']['visits']['byCounty'][countyId]['fluency']['class']          ||= {}
       templates['result']['visits']['byCounty'][countyId]['fluency']['class'][1]       ||= {}
       templates['result']['visits']['byCounty'][countyId]['fluency']['class'][2]       ||= {}
+      templates['result']['visits']['byCounty'][countyId]['fluency']['class'][3]       ||= {}
 
       # templates['result']['visits']['esqac']['byCounty'][countyId]                  ||= {}
       # templates['result']['visits']['esqac']['byCounty'][countyId]['name']          ||= county['label']
@@ -135,6 +137,7 @@ class NtpReports
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class']          ||= {}
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1]       ||= {}
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2]       ||= {}
+      templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3]       ||= {}
 
       templates['result']['visits']['maths']['byCounty'][countyId]['quota']    = county['quota']
 
@@ -172,6 +175,7 @@ class NtpReports
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']          ||= {}
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]       ||= {}
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]       ||= {}
+          templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]       ||= {}
 
           templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['quota']  += zone['quota'].to_i
           templates['result']['visits']['national']['quota']                             += zone['quota'].to_i
@@ -194,6 +198,7 @@ class NtpReports
           templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']          ||= {}
           templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]       ||= {}
           templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]       ||= {}
+          templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]       ||= {}
 
           templates['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['quota']  += zone['quota'].to_i
           templates['result']['visits']['maths']['national']['quota']                             += zone['quota'].to_i
@@ -353,7 +358,7 @@ class NtpReports
     #
     # Handle Role-specific calculations
     #
-    if userRole == "tac-tutor" or userRole == "coach"
+    if userRole == "tac-tutor" or userRole == "coach" or userRole == "cso" or userRole == "CSO"
 
       #skip these steps if either the county or zone are no longer in the primary list 
       return err(false, "Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
@@ -490,6 +495,18 @@ class NtpReports
         met            = trip['value']['metBenchmark']
 
         subject = trip['value']['subject']
+
+        #check that class 3 subject data is handled in the same way as class 1 & 2
+        if subject == "english"
+          subject = "english_word"
+        elsif subject == "kiswahili"
+          subject = "word"
+        else
+          subject = trip['value']['subject']
+        end
+        
+        #puts "Subject #{subject}"
+
         obsClass = trip['value']['class'].to_i
 
         if !@reportSettings['fluency']['subjects'].include?(subject)
@@ -568,6 +585,12 @@ class NtpReports
           monthData['result']['visits']['national']['fluency']['class'][2][subject]['size']          ||= 0
           monthData['result']['visits']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
 
+          monthData['result']['visits']['national']['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
           monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['sum']           += total
           monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
           monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
@@ -585,6 +608,12 @@ class NtpReports
           monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
           monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
 
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
           monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
           monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
           monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
@@ -601,6 +630,12 @@ class NtpReports
           monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
           monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
           monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
 
           monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
           monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
