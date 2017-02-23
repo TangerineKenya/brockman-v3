@@ -8,7 +8,7 @@ require_relative '../utilities/percentage'
 
 class Brockman < Sinatra::Base
   
-  get '/email/:email/:group/:workflowIds/:year/:month/:county.?:format?' do | email, group, workflowIds, year, month, county, format |
+  get '/email/:email/:group/:year/:month/:county.?:format?' do | email, group, year, month, county, format |
 
     format = "html" unless format == "json"
     
@@ -319,7 +319,7 @@ class Brockman < Sinatra::Base
           <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> TUSOME</h1>
 
           #{contentHtml}
-          <p><a href='http://ntp.tangerinecentral.org/_csv/report/#{group}/#{workflowIds}/#{year}/#{month}/#{currentCountyId}.html'>View map and details</a></p>
+          <p><a href='http://tools.tusome.tangerinecentral.org/_csv/report/#{group}/#{year}/#{month}/#{currentCountyId}.html'>View map and details</a></p>
         </body>
       </html>
 
@@ -346,7 +346,7 @@ class Brockman < Sinatra::Base
       File.open('special.log', 'w') { |file| file.write("#{email.encoding}\n#{emailSubject.encoding}\n#{mailHtml.encoding}") }
       mail = Mail.deliver do
         to      email
-        from    'Tusome <no-reply@ntp.tangerinecentral.org>'
+        from    'Tusome <no-reply@tools.tusome.tangerinecentral.org>'
         subject emailSubject
 
         html_part do
