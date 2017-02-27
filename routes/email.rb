@@ -98,6 +98,10 @@ class Brockman < Sinatra::Base
               <th class='custSort'>#{subjectLegend[subject]} - Class 2<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
+              </th>
+              <th class='custSort'>#{subjectLegend[subject]} - Class 3<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
             }.join}
           </tr>
@@ -110,6 +114,7 @@ class Brockman < Sinatra::Base
             quota           = county['quota']
             cl1sampleTotal = 0
             cl2sampleTotal = 0
+            cl3sampleTotal = 0
 
             "
               <tr>
@@ -156,8 +161,26 @@ class Brockman < Sinatra::Base
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                     end
                   end
+
+                  cl3sample = county['fluency']['class']['3'][subject]
+                  if cl3sample.nil?
+                    cl3average = "no data"
+                  else
+                    if cl3sample && cl3sample['size'] != 0 && cl3sample['sum'] != 0
+                      cl3sampleTotal += cl3sample['size']
+                      cl3average = ( cl2sample['sum'] / cl3sample['size'] ).round
+                    else
+                      cl3average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl3benchmark = cl3sample['metBenchmark']
+                      cl3percentage = "( #{percentage( cl3sample['size'], cl2benchmark )}% )"
+                    end
+                  end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>
+                  <td>#{cl3average} <span>#{cl3percentage}</span></td>"
                 }.join}
               </tr>
             "}.join }
@@ -198,8 +221,26 @@ class Brockman < Sinatra::Base
                     cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                   end
                 end
+
+                cl3sample = result['visits']['national']['fluency']['class']['3'][subject]
+                if cl3sample.nil?
+                  cl3average = "no data"
+                else
+                  if cl3sample && cl3sample['size'] != 0 && cl3sample['sum'] != 0
+                    cl3sampleTotal = cl3sample['size']
+                    cl3average = ( cl3sample['sum'] / cl3sample['size'] ).round
+                  else
+                    cl3average = '0'
+                  end
+
+                  if subject != "operation"
+                    cl3benchmark = cl3sample['metBenchmark']
+                    cl3percentage = "( #{percentage( cl3sample['size'], cl2benchmark )}% )"
+                  end
+                end
                 "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>
+                  <td>#{cl3average} <span>#{cl3percentage}</span></td>"
               }.join}
             </tr>
         </tbody>
@@ -228,6 +269,10 @@ class Brockman < Sinatra::Base
                 #{subjectLegend[subject]} - Class 2<br>
                 Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
                 #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
+              </th><th class='custSort'>
+                #{subjectLegend[subject]} - Class 3<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>" if subject != "operation"}
               </th>"
             }.join}
           </tr>
@@ -243,6 +288,7 @@ class Brockman < Sinatra::Base
             met = zone['fluency']['metBenchmark']
             cl1sampleTotal = 0
             cl2sampleTotal = 0
+            cl3sampleTotal = 0
             
             # Do we still need this?
             #nonFormalAsterisk = if formalZones[zone.downcase] then "<b>*</b>" else "" end
@@ -286,8 +332,26 @@ class Brockman < Sinatra::Base
                       cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                     end
                   end
+
+                  cl3sample = zone['fluency']['class']['3'][subject]
+                  if cl3sample.nil?
+                    cl3average = "no data"
+                  else
+                    if cl3sample && cl3sample['size'] != 0 && cl3sample['sum'] != 0
+                      cl3sampleTotal += cl3sample['size']
+                      cl3average = ( cl3sample['sum'] / cl3sample['size'] ).round
+                    else
+                      cl3average = '0'
+                    end
+
+                    if subject != "operation"
+                      cl3benchmark = cl3sample['metBenchmark']
+                      cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
+                    end
+                  end
                   "<td>#{cl1average} <span>#{cl1percentage}</span></td>
-                  <td>#{cl2average} <span>#{cl2percentage}</span></td>"
+                  <td>#{cl2average} <span>#{cl2percentage}</span></td>
+                  <td>#{cl3average} <span>#{cl3percentage}</span></td>"
               }.join}
 
             </tr>
@@ -319,7 +383,7 @@ class Brockman < Sinatra::Base
           <h1><img style='vertical-align:middle;' src=\"http://databases.tangerinecentral.org/tangerine/_design/ojai/images/corner_logo.png\" title=\"Go to main screen.\"> TUSOME</h1>
 
           #{contentHtml}
-          <p><a href='http://tools.tusome.tangerinecentral.org/_csv/report/#{group}/#{year}/#{month}/#{currentCountyId}.html'>View map and details</a></p>
+          <p><a href='http://tools.tusome.tangerinecentral.org/_csv/report/#{group}/00b0a09a-2a9f-baca-2acb-c6264d4247cb,c835fc38-de99-d064-59d3-e772ccefcf7d/#{year}/#{month}/#{currentCountyId}.html'>View map and details</a></p>
         </body>
       </html>
 
