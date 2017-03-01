@@ -291,8 +291,8 @@ class Brockman < Sinatra::Base
         addChart(datasetScores, 'Kiswahili Score - Class 1', 'Kiswahili Score - Class 1', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 2', 'Kiswahili Score - Class 2', 'Correct Items Per Minute');
         addChart(datasetScores, 'Kiswahili Score - Class 3', 'Kiswahili Score - Class 3', 'Correct Items Per Minute');
-        //addMathsChart(datasetScores, 'Maths Score - Class 1', 'Maths Score - Class 1', 'Correct Items Per Minute');
-        //addMathsChart(datasetScores, 'Maths Score - Class 2', 'Maths Score - Class 2', 'Correct Items Per Minute');
+        addMathsChart(datasetScores, 'Maths Score - Class 1', 'Maths Score - Class 1', 'Correct Items Per Minute');
+        addMathsChart(datasetScores, 'Maths Score - Class 2', 'Maths Score - Class 2', 'Correct Items Per Minute');
         //addChart('Math Score', 'Maths Score', 'Correct Items Per Minute');
         addChart(datasetObservationsPublic, 'Visit Attainment', 'Classroom Observations (Public)','Percentage');
         addChart(datasetObservationsAPBET, 'Visit Attainment', 'Classroom Observations (APBET)','Percentage');
@@ -788,7 +788,7 @@ class Brockman < Sinatra::Base
         <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
         <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
         <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
-        <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1 or class 2, out of all of the students assessed for those subjects.</li>
+        <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1, class 2 or class 3, out of all of the students assessed for those subjects. The benchmarks for class 3 are yet to be defined.</li>
       </ol>
       </small>
 
@@ -947,6 +947,38 @@ class Brockman < Sinatra::Base
     "
     #***************************** Maths Report components ***************************
     row = 0
+
+    cl1Allsample = result['visits']['maths']['national']['fluency']['class']['1']['operation']
+      if cl1Allsample.nil?
+                  cl1Allaverage = "no data"
+      else
+        if cl1Allsample && cl1Allsample['size'] != 0 && cl1Allsample['sum'] != 0
+          cl1AllsampleTotal = cl1Allsample['size']
+          cl1Allaverage = ( cl1Allsample['sum'] / cl1Allsample['size'] ).round
+        else
+          cl1Allaverage = '0'
+        end
+          cl1Allbenchmark = cl1Allsample['metBenchmark']
+          cl1Allpercentage = "( #{percentage( cl1Allsample['size'], cl1Allbenchmark )}% )"
+                
+      end
+
+    cl2Allsample = result['visits']['maths']['national']['fluency']['class']['2']['operation']
+      if cl2Allsample.nil?
+                  cl2Allaverage = "no data"
+      else
+        if cl2Allsample && cl2Allsample['size'] != 0 && cl2Allsample['sum'] != 0
+            cl2AllsampleTotal = cl2Allsample['size']
+            cl2Allaverage = ( cl2Allsample['sum'] / cl2Allsample['size'] ).round
+        else
+          cl2Allaverage = '0'
+        end
+                  
+        cl2Allbenchmark = cl2Allsample['metBenchmark']
+        cl2Allpercentage = "( #{percentage( cl2Allsample['size'], cl2Allbenchmark )}% )"
+                  
+      end
+
     mathsCountyTableHtml = "
       <table class='maths-table'>
         <thead>
@@ -954,7 +986,14 @@ class Brockman < Sinatra::Base
             <th>County</th>
             <th class='custSort' align='left'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            
+            <th class='custSort'>Maths - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th>
+              <th class='custSort'>Maths - Class 2<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th>
           </tr>
         </thead>
         <tbody>
@@ -990,27 +1029,31 @@ class Brockman < Sinatra::Base
             if cl2sample.nil?
               cl2average = "no data"
             else
-            if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
-              cl2sampleTotal += cl2sample['size']
-              cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
-            else
-              cl2average = '0'
-            end                 
+              if cl2sample && cl2sample['size'] != 0 && cl2sample['sum'] != 0
+                cl2sampleTotal += cl2sample['size']
+                cl2average = ( cl2sample['sum'] / cl2sample['size'] ).round
+              else
+                cl2average = '0'
+              end                 
               cl2benchmark = cl2sample['metBenchmark']
               cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                    
-          end
+            end
             
+           
+
             "<tr>
                 <td>#{titleize(countyName)}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                
+                <td>#{cl1average} <span>#{cl1percentage}</span></td>
+                <td>#{cl2average} <span>#{cl2percentage}</span></td>
             </tr>
             "}.join}
              <tr>
               <td>All</td>
               <td>#{result['visits']['maths']['national']['visits']} ( #{percentage( result['visits']['maths']['national']['quota'], result['visits']['maths']['national']['visits'] )}% )</td>
-              
+              <td>#{cl1Allaverage}<span>#{cl1Allpercentage}</span></td>
+              <td>#{cl2Allaverage}<span>#{cl2Allpercentage}</span></td>
             </tr>
       </tbody>
       </table>
@@ -1032,7 +1075,15 @@ class Brockman < Sinatra::Base
             <th>Zone</th>
             <th class='custSort' align='left'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-           
+            <th class='custSort'>
+                Maths - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th><th class='custSort'>
+                Maths - Class 2<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th>
           </tr>
         </thead>
         <tbody>
@@ -1081,7 +1132,8 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{zoneName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-
+              <td>#{cl1average} <span>#{cl1percentage}</span></td>
+              <td>#{cl2average} <span>#{cl2percentage}</span></td>
               </tr>
           "}.join }
         </tbody>
@@ -1091,6 +1143,8 @@ class Brockman < Sinatra::Base
       <ol>
         <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
         <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
+        <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
+        <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either class 1 or class 2, out of all of the students assessed for those subjects. The benchmarks are yet to be defined.</li>
       </ol>
       </small>
 

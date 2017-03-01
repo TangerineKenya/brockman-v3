@@ -516,7 +516,11 @@ class NtpReports
         #pushUniq reportSettings['fluency']['subjects'], subject, subjectsExists
 
         total = 0
-        itemsPerMinute.each { | ipm | total += ipm }
+        itemsPerMinute.each { | ipm | 
+          if !ipm.nil? 
+            total += ipm 
+          end
+        }
 
         #check for maths workflow
         if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
