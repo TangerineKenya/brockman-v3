@@ -948,37 +948,42 @@ class Brockman < Sinatra::Base
     #***************************** Maths Report components ***************************
     row = 0
 
-    cl1Allsample = result['visits']['maths']['national']['fluency']['class']['1']['operation']
-      if cl1Allsample.nil?
-                  cl1Allaverage = "no data"
-      else
-        if cl1Allsample && cl1Allsample['size'] != 0 && cl1Allsample['sum'] != 0
-          cl1AllsampleTotal = cl1Allsample['size']
-          cl1Allaverage = ( cl1Allsample['sum'] / cl1Allsample['size'] ).round
-        else
-          cl1Allaverage = '0'
-        end
-          cl1Allbenchmark = cl1Allsample['metBenchmark']
-          cl1Allpercentage = "( #{percentage( cl1Allsample['size'], cl1Allbenchmark )}% )"
-                
-      end
+    if !result['visits']['maths']['national']['fluency']['class'].nil?
 
-    cl2Allsample = result['visits']['maths']['national']['fluency']['class']['2']['operation']
-      if cl2Allsample.nil?
-                  cl2Allaverage = "no data"
-      else
-        if cl2Allsample && cl2Allsample['size'] != 0 && cl2Allsample['sum'] != 0
-            cl2AllsampleTotal = cl2Allsample['size']
-            cl2Allaverage = ( cl2Allsample['sum'] / cl2Allsample['size'] ).round
+      cl1Allsample = result['visits']['maths']['national']['fluency']['class']['1']['operation']
+        if cl1Allsample.nil?
+                    cl1Allaverage = "no data"
         else
-          cl2Allaverage = '0'
+          if cl1Allsample && cl1Allsample['size'] != 0 && cl1Allsample['sum'] != 0
+            cl1AllsampleTotal = cl1Allsample['size']
+            cl1Allaverage = ( cl1Allsample['sum'] / cl1Allsample['size'] ).round
+          else
+            cl1Allaverage = '0'
+          end
+            cl1Allbenchmark = cl1Allsample['metBenchmark']
+            cl1Allpercentage = "( #{percentage( cl1Allsample['size'], cl1Allbenchmark )}% )"
+                  
         end
-                  
-        cl2Allbenchmark = cl2Allsample['metBenchmark']
-        cl2Allpercentage = "( #{percentage( cl2Allsample['size'], cl2Allbenchmark )}% )"
-                  
-      end
 
+      cl2Allsample = result['visits']['maths']['national']['fluency']['class']['2']['operation']
+        if cl2Allsample.nil?
+                    cl2Allaverage = "no data"
+        else
+          if cl2Allsample && cl2Allsample['size'] != 0 && cl2Allsample['sum'] != 0
+              cl2AllsampleTotal = cl2Allsample['size']
+              cl2Allaverage = ( cl2Allsample['sum'] / cl2Allsample['size'] ).round
+          else
+            cl2Allaverage = '0'
+          end
+                    
+          cl2Allbenchmark = cl2Allsample['metBenchmark']
+          cl2Allpercentage = "( #{percentage( cl2Allsample['size'], cl2Allbenchmark )}% )"
+                    
+        end
+    else
+      cl1Allaverage = "no data"
+      cl2Allaverage = "no data"
+    end 
     mathsCountyTableHtml = "
       <table class='maths-table'>
         <thead>
