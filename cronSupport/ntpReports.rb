@@ -689,18 +689,19 @@ class NtpReports
 
     elsif userRole == "esqac" or userRole == "ESQAC"
       puts "** processing ESQAC Trip"
+
       #skip these steps if either the county or zone are no longer in the primary list 
-      return err(true, "ESQAC: Missing County") if monthData['result']['visits']['esqac']['byCounty'][countyId].nil?
-      return err(true, "ESQAC: Missing Zones")  if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'].nil?
-      return err(true, "ESQAC: Missing Zone")   if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId].nil?
-      return err(true, "ESQAC: Missing Visits") if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['visits'].nil?
+      return err(false, "ESQAC: Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
+      return err(true, "ESQAC: Missing Sub County")  if monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId].nil?
+      #return err(true, "ESQAC: Missing Zone")   if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId].nil?
+      #return err(true, "ESQAC: Missing Visits") if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['visits'].nil?
 
       monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['trips'].push trip['id']
       
       monthData['result']['visits']['esqac']['national']['visits']                                       += 1
       monthData['result']['visits']['byCounty'][countyId]['esqac']['visits']                             += 1
       monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['visits'] += 1
-
+      
       #
       # Process geoJSON data for mapping
       #
