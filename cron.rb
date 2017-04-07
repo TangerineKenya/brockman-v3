@@ -36,7 +36,7 @@ END
 puts header
 
 groups = []
-groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2014, 'endYear' => 2017 })
+groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2016, 'endYear' => 2017 })
 
 
 #
@@ -122,13 +122,13 @@ groups.each { |group|
   workflowIds = []
 
   workflows.each{ |workflowId, workflow|
-    #if workflow['reporting'].nil?
-     # next
-    #end
+    if workflow['reporting'].nil?
+      next
+    end
 
-    #if not workflow['reporting']['preProcess']
-     # next
-    #end
+    if not workflow['reporting']['preProcess']
+      next
+    end
     workflowIds.push workflowId
   }
 
@@ -231,7 +231,7 @@ groups.each { |group|
 
   (group["startYear"]..group["endYear"]).each { |year| 
     (1..12).each { |month|
-    #(3..5).each { |month|
+    #(1..10).each { |month|
     
       helper.resetSkippedCount() if helper
 

@@ -370,112 +370,113 @@ class NtpReports
 
       #puts "trip user: #{username} - in result #{result['users']['all'][username].nil?}"
       #return if monthData['result']['users']['all'][username].nil?
-      
-      #ensure that the user exists in the db and in the result-set
-      if monthData['result']['users']['all'][username].nil?
-        monthData['result']['users']['all'][username]                            ||= {}
-        monthData['result']['users']['all'][username]['data']                    ||= {}
+      if !trip['value']['itemsPerMinute'].nil? and !trip['value']['subject'].nil? and  trip['value']['subject'] != ""and !trip['value']['class'].nil? and trip['value']['class'] != ""
+        #ensure that the user exists in the db and in the result-set
+        if monthData['result']['users']['all'][username].nil?
+          monthData['result']['users']['all'][username]                            ||= {}
+          monthData['result']['users']['all'][username]['data']                    ||= {}
 
-        monthData['result']['users']['all'][username]['target']                  ||= {}      # container for target zone visits
-        monthData['result']['users']['all'][username]['target']['visits']        ||= 0
-        monthData['result']['users']['all'][username]['target']['compensation']  ||= 0
+          monthData['result']['users']['all'][username]['target']                  ||= {}      # container for target zone visits
+          monthData['result']['users']['all'][username]['target']['visits']        ||= 0
+          monthData['result']['users']['all'][username]['target']['compensation']  ||= 0
 
-        monthData['result']['users']['all'][username]['other']                   ||= {}      # container for non-target zone visits
+          monthData['result']['users']['all'][username]['other']                   ||= {}      # container for non-target zone visits
 
-        monthData['result']['users']['all'][username]['total']                   ||= {}      # container for visit and compensation totals
-        monthData['result']['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
-        monthData['result']['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
-        monthData['result']['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
-      end
-
-      if !monthData['result']['users'][countyId][zoneId][username].nil?
-        monthData['result']['users']['all'][username]['target']['visits']  += 1
-
-      else
-        monthData['result']['users']['all'][username]['other'][countyId]                           ||= {}
-        monthData['result']['users']['all'][username]['other'][countyId][zoneId]                   ||= {}
-        monthData['result']['users']['all'][username]['other'][countyId][zoneId]['visits']         ||= 0
-        monthData['result']['users']['all'][username]['other'][countyId][zoneId]['compensation']   ||= 0
-
-        monthData['result']['users']['all'][username]['flagged']                                     = true
-        monthData['result']['users']['all'][username]['other'][countyId][zoneId]['visits']          += 1
-      end
-
-      monthData['result']['users']['all'][username]['total']['visits']                              += 1
-
-      #monthData['result']['visits']['national']['visits']                                           += 1
-      #monthData['result']['visits']['byCounty'][countyId]['visits']                                 += 1 
-      #monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']                += 1
-      
-      #check workflowid=maths observations
-      if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
-        monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
-        monthData['result']['visits']['maths']['national']['visits']                                += 1
-        monthData['result']['visits']['maths']['byCounty'][countyId]['visits']                      += 1 
-        monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['visits']     += 1
-        
-        #
-        # Process geoJSON data for mapping
-        #
-        if !trip['value']['gpsData'].nil?
-          point = trip['value']['gpsData']
-
-          if !@timezone.nil?
-            startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
-          else 
-            startDate = Time.at(trip['value']['minTime'].to_i / 1000)
-          end
-
-          point['role'] = "maths"
-          point['properties'] = [
-            { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-            { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-            { 'label' => 'Class',           'value' => trip['value']['class'] },
-            { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
-            { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
-            { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-            { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
-            { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-            { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
-          ]
-
-          monthData['geoJSON']['byCounty'][countyId]['data'].push point
+          monthData['result']['users']['all'][username]['total']                   ||= {}      # container for visit and compensation totals
+          monthData['result']['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
+          monthData['result']['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
+          monthData['result']['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
         end
 
-      else
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
-        monthData['result']['visits']['national']['visits']                                         += 1
-        monthData['result']['visits']['byCounty'][countyId]['visits']                               += 1 
-        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
-        
-        #
-        # Process geoJSON data for mapping
-        #
-        if !trip['value']['gpsData'].nil?
-          point = trip['value']['gpsData']
+        if !monthData['result']['users'][countyId][zoneId][username].nil?
+          monthData['result']['users']['all'][username]['target']['visits']  += 1
 
-          if !@timezone.nil?
-            startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
-          else 
-            startDate = Time.at(trip['value']['minTime'].to_i / 1000)
-          end
+        else
+          monthData['result']['users']['all'][username]['other'][countyId]                           ||= {}
+          monthData['result']['users']['all'][username]['other'][countyId][zoneId]                   ||= {}
+          monthData['result']['users']['all'][username]['other'][countyId][zoneId]['visits']         ||= 0
+          monthData['result']['users']['all'][username]['other'][countyId][zoneId]['compensation']   ||= 0
 
-          point['role'] = userRole
-          point['properties'] = [
-            { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-            { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-            { 'label' => 'Class',           'value' => trip['value']['class'] },
-            { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
-            { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
-            { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-            { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
-            { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-            { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
-          ]
-
-          monthData['geoJSON']['byCounty'][countyId]['data'].push point
+          monthData['result']['users']['all'][username]['flagged']                                     = true
+          monthData['result']['users']['all'][username]['other'][countyId][zoneId]['visits']          += 1
         end
 
+        monthData['result']['users']['all'][username]['total']['visits']                              += 1
+
+        #monthData['result']['visits']['national']['visits']                                           += 1
+        #monthData['result']['visits']['byCounty'][countyId]['visits']                                 += 1 
+        #monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']                += 1
+        
+        #check workflowid=maths observations
+        if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
+          monthData['result']['visits']['maths']['national']['visits']                                += 1
+          monthData['result']['visits']['maths']['byCounty'][countyId]['visits']                      += 1 
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['visits']     += 1
+          
+          #
+          # Process geoJSON data for mapping
+          #
+          if !trip['value']['gpsData'].nil?
+            point = trip['value']['gpsData']
+
+            if !@timezone.nil?
+              startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+            else 
+              startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+            end
+
+            point['role'] = "maths"
+            point['properties'] = [
+              { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
+              { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
+              { 'label' => 'Class',           'value' => trip['value']['class'] },
+              { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
+              { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
+              { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
+              { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
+              { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
+              { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+            ]
+
+            monthData['geoJSON']['byCounty'][countyId]['data'].push point
+          end
+
+        elsif workflowId == "c835fc38-de99-d064-59d3-e772ccefcf7d" or workflowId == "27469912-1fa9-cac1-6810-b4e962a82b42"
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
+          monthData['result']['visits']['national']['visits']                                         += 1
+          monthData['result']['visits']['byCounty'][countyId]['visits']                               += 1 
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
+          
+          #
+          # Process geoJSON data for mapping
+          #
+          if !trip['value']['gpsData'].nil?
+            point = trip['value']['gpsData']
+
+            if !@timezone.nil?
+              startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+            else 
+              startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+            end
+
+            point['role'] = userRole
+            point['properties'] = [
+              { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
+              { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
+              { 'label' => 'Class',           'value' => trip['value']['class'] },
+              { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
+              { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
+              { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
+              { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
+              { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
+              { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+            ]
+
+            monthData['geoJSON']['byCounty'][countyId]['data'].push point
+          end
+
+        end
       end
 
       
@@ -575,7 +576,7 @@ class NtpReports
           monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
           monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
 
-        else
+        elsif workflowId == "c835fc38-de99-d064-59d3-e772ccefcf7d" or workflowId == "27469912-1fa9-cac1-6810-b4e962a82b42"
           monthData['result']['visits']['national']['fluency']['class']                              ||= {}
           monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
           monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
@@ -652,10 +653,8 @@ class NtpReports
 
     elsif userRole == "scde"
 
-      return err(false, "Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
-      return err(false, "Missing Zones")  if monthData['result']['visits']['byCounty'][countyId]['subCounties'].nil?
-      return err(false, "Missing Zone")   if monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId].nil?
-      return err(false, "Missing Visits") if monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['visits'].nil?
+      return err(false, "SCDE: Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
+      return err(true, "SCDE: Missing Sub County")  if monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId].nil?
 
       monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['trips'].push trip['id']
       
