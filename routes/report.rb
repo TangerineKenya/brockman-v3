@@ -877,9 +877,9 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th class='custSort'>Number of classroom visits (Tusome)<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits (English & Kiswahili)<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th class='custSort'>Number of classroom visits (Priede)<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits (Maths)<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
             
           </tr>
@@ -925,9 +925,9 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>SubCounty</th>
-            <th class='custSort'>Number of classroom visits (Tusome)<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits (English & Kiswahili)<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th class='custSort'>Number of classroom visits (Priede)<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits (Maths)<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
             
           </tr>
