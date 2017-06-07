@@ -619,7 +619,7 @@ class Brockman < Sinatra::Base
                     cl1average = '0'
                   end
 
-                  if subject != "operation" && cl1sample['size'] != 0 && cl1sample['sum'] != 0 && cl1average != 0
+                  if subject != "operation" && cl1average != 0
                     cl1benchmark = cl1sample['metBenchmark']
                     cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
                   end
@@ -636,7 +636,7 @@ class Brockman < Sinatra::Base
                     cl2average = '0'
                   end
 
-                  if subject != "operation" && cl2sample['size'] != 0 && cl2sample['sum'] != 0 && cl2average != 0
+                  if subject != "operation" && cl2average != 0
                     cl2benchmark = cl2sample['metBenchmark']
                     cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                   end
@@ -653,7 +653,7 @@ class Brockman < Sinatra::Base
                     cl3average = '0'
                   end
 
-                  if subject != "operation" && cl3sample['size'] != 0 && cl3sample['sum'] != 0 && cl3average != 0
+                  if subject != "operation"  && cl3average != 0
                     cl3benchmark = cl3sample['metBenchmark']
                     cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
                   end
