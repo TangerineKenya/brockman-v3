@@ -619,7 +619,7 @@ class Brockman < Sinatra::Base
                     cl1average = '0'
                   end
 
-                  if subject != "operation" && cl1sample['size'] != 0 && cl1sample['sum'] != 0 && cl1average !=0
+                  if subject != "operation" && cl1sample['size'] != 0 && cl1sample['sum'] != 0 && cl1average != 0
                     cl1benchmark = cl1sample['metBenchmark']
                     cl1percentage = "( #{percentage( cl1sample['size'], cl1benchmark )}% )"
                   end
@@ -636,7 +636,7 @@ class Brockman < Sinatra::Base
                     cl2average = '0'
                   end
 
-                  if subject != "operation" && cl2sample['size'] != 0 && cl2sample['sum'] != 0 && cl2average !=0
+                  if subject != "operation" && cl2sample['size'] != 0 && cl2sample['sum'] != 0 && cl2average != 0
                     cl2benchmark = cl2sample['metBenchmark']
                     cl2percentage = "( #{percentage( cl2sample['size'], cl2benchmark )}% )"
                   end
@@ -653,7 +653,7 @@ class Brockman < Sinatra::Base
                     cl3average = '0'
                   end
 
-                  if subject != "operation" && cl3sample['size'] != 0 && cl3sample['sum'] != 0 && cl3average !=0
+                  if subject != "operation" && cl3sample['size'] != 0 && cl3sample['sum'] != 0 && cl3average != 0
                     cl3benchmark = cl3sample['metBenchmark']
                     cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
                   end
@@ -877,10 +877,9 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th class='custSort'>Number of classroom visits (English & Kiswahili)<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits <a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th class='custSort'>Number of classroom visits (Maths)<a href='#footer-note-1'><sup>[1]</sup></a><br>
-            <small>( Percentage of Target Visits)</small></th>
+            
             
           </tr>
         </thead>
@@ -898,14 +897,14 @@ class Brockman < Sinatra::Base
               <tr>
                 <td>#{titleize(countyName)}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                <td>#{priedeVisits} ( #{percentage( quota, priedeVisits )}% )</td>
+               
                 
               </tr>
             "}.join }
             <tr>
               <td>All</td>
               <td>#{result['visits']['esqac']['national']['visits']} ( #{percentage( result['visits']['esqac']['national']['quota'], result['visits']['esqac']['national']['visits'] )}% )</td>
-              <td>#{result['visits']['priede']['national']['visits']} ( #{percentage( result['visits']['esqac']['national']['quota'], result['visits']['priede']['national']['visits'] )}% )</td>
+            
               
             </tr>
         </tbody>
@@ -925,10 +924,9 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>SubCounty</th>
-            <th class='custSort'>Number of classroom visits (English & Kiswahili)<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits <a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            <th class='custSort'>Number of classroom visits (Maths)<a href='#footer-note-1'><sup>[1]</sup></a><br>
-            <small>( Percentage of Target Visits)</small></th>
+           
             
           </tr>
         </thead>
@@ -951,7 +949,7 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{subCountyName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-              <td>#{priedeVisits} ( #{percentage( quota, priedeVisits )}% )</td>
+              
              
             </tr>
           "}.join }
