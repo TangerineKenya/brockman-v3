@@ -558,15 +558,16 @@ class NtpReports
 
         #pushUniq reportSettings['fluency']['subjects'], subject, subjectsExists
 
-        total = 0
-        itemsPerMinute.each { | ipm | 
-          if !ipm.nil? 
-            total += ipm 
-          end
-        }
-
         #check for maths workflow
         if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
+
+          total = 0
+          itemsPerMinute.each { | ipm | 
+            if !ipm.nil? 
+              total += ipm 
+            end
+          }
+
           monthData['result']['visits']['maths']['national']['fluency']['class']                              ||= {}
           monthData['result']['visits']['maths']['national']['fluency']['class'][1]                           ||= {}
           monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]                  ||= {}
@@ -619,6 +620,14 @@ class NtpReports
           monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
 
         elsif workflowId=="c835fc38-de99-d064-59d3-e772ccefcf7d" or workflowId=="27469912-1fa9-cac1-6810-b4e962a82b42"
+          
+          total = 0
+          itemsPerMinute.each { | ipm | 
+            if !ipm.nil? 
+              total += ipm 
+            end
+          }
+
           monthData['result']['visits']['national']['fluency']['class']                              ||= {}
           monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
           monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
@@ -741,9 +750,6 @@ class NtpReports
       #1.Tusome/Priede Flag
       #2. Subject
 
-      t = trip['value']
-
-      puts "Trip data #{t}"
 
       if !trip['value']['subject'].nil? and !trip['value']['class'].nil?
         #priede or tusome
