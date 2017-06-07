@@ -532,34 +532,17 @@ class NtpReports
          trip['value']['subject'] != ""and
          !trip['value']['class'].nil? and
          trip['value']['class'] != ""
-
-        itemsPerMinute = trip['value']['itemsPerMinute']
-        benchmarked    = trip['value']['benchmarked']
-        met            = trip['value']['metBenchmark']
-
-        subject = trip['value']['subject']
-
-        #check that class 3 subject data is handled in the same way as class 1 & 2
-        if subject == "english"
-          subject = "english_word"
-        elsif subject == "kiswahili"
-          subject = "word"
-        else
-          subject = trip['value']['subject']
-        end
         
         #puts "Subject #{subject}"
-
-        obsClass = trip['value']['class'].to_i
-
-        if !@reportSettings['fluency']['subjects'].include?(subject)
-          @reportSettings['fluency']['subjects'].push subject
-        end
-
         #pushUniq reportSettings['fluency']['subjects'], subject, subjectsExists
 
         #check for maths workflow
         if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
+          itemsPerMinute = trip['value']['itemsPerMinute']
+          benchmarked    = trip['value']['benchmarked']
+          met            = trip['value']['metBenchmark']
+
+          subject = trip['value']['subject']
 
           total = 0
           itemsPerMinute.each { | ipm | 
@@ -567,6 +550,12 @@ class NtpReports
               total += ipm 
             end
           }
+
+          obsClass = trip['value']['class'].to_i
+
+          if !@reportSettings['fluency']['subjects'].include?(subject)
+            @reportSettings['fluency']['subjects'].push subject
+          end
 
           monthData['result']['visits']['maths']['national']['fluency']['class']                              ||= {}
           monthData['result']['visits']['maths']['national']['fluency']['class'][1]                           ||= {}
@@ -621,6 +610,21 @@ class NtpReports
 
         elsif workflowId=="c835fc38-de99-d064-59d3-e772ccefcf7d" or workflowId=="27469912-1fa9-cac1-6810-b4e962a82b42"
           
+          itemsPerMinute = trip['value']['itemsPerMinute']
+          benchmarked    = trip['value']['benchmarked']
+          met            = trip['value']['metBenchmark']
+
+          subject = trip['value']['subject']
+
+          #check that class 3 subject data is handled in the same way as class 1 & 2
+          if subject == "english"
+            subject = "english_word"
+          elsif subject == "kiswahili"
+            subject = "word"
+          else
+            subject = trip['value']['subject']
+          end
+
           total = 0
           itemsPerMinute.each { | ipm | 
             if !ipm.nil? 
@@ -628,6 +632,12 @@ class NtpReports
             end
           }
 
+          obsClass = trip['value']['class'].to_i
+
+          if !@reportSettings['fluency']['subjects'].include?(subject)
+            @reportSettings['fluency']['subjects'].push subject
+          end
+          
           monthData['result']['visits']['national']['fluency']['class']                              ||= {}
           monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
           monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
