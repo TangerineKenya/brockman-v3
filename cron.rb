@@ -36,7 +36,7 @@ END
 puts header
 
 groups = []
-groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2016, 'endYear' => 2017 })
+groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2017, 'endYear' => 2017 })
 
 
 #
@@ -328,6 +328,9 @@ groups.each { |group|
           # Process each Trip result record in chunk
           for trip in tripRows
             helper.processTrip(trip, monthData, templates, workflows) if helper
+
+            #staff trips
+            helper.processStaffTrip(trip, monthData, templates, workflows) if helper
           end
 
         }

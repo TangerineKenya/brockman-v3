@@ -102,6 +102,16 @@ class NtpReports
     templates['geoJSON']               ||= {}
     templates['geoJSON']['byCounty']   ||= {}
 
+    #rti staff data
+    templates['result']['staff']                               ||= {}
+    templates['result']['staff']['byCounty']                   ||= {}
+
+    templates['result']['staff']['users']                      ||= {}
+    #templates['result']['staff']['users']['all']               ||= {}
+
+    templates['result']['staff']['national']                   ||= {}
+    templates['result']['staff']['national']['visits']         ||= 0
+    templates['result']['staff']['national']['quota']          ||= 0
     #
     # Retrieve Shool Locations and Quotas
     #
@@ -165,6 +175,14 @@ class NtpReports
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3]       ||= {}
 
       templates['result']['visits']['maths']['byCounty'][countyId]['quota']    = county['quota']
+
+      #staff data
+      templates['result']['staff']['byCounty'][countyId]                  ||= {}
+      templates['result']['staff']['byCounty'][countyId]['name']          ||= county['label']
+      templates['result']['staff']['byCounty'][countyId]['visits']        ||= 0
+      templates['result']['staff']['byCounty'][countyId]['quota']         ||= 0
+      templates['result']['staff']['byCounty'][countyId]['zones']         ||= {}
+      templates['result']['staff']['byCounty'][countyId]['users']         ||= {}
 
       #manually flatten out the subCounty data level
       county['children'].map { | subCountyId, subCounty | 
@@ -251,6 +269,15 @@ class NtpReports
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['fluency']        ||= {}
 
+          #staff data count zones in the county
+          templates['result']['staff']['byCounty'][countyId]['quota']                           += 1
+          templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
+          templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
+          templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['visits']         ||= 0
+          templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
+          templates['result']['staff']['national']['quota']                                      += 1
+          #templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          += 1
+
           #init container for users
           templates['result']['users'][countyId]                   ||= {}
           templates['result']['users'][countyId][zoneId]           ||= {}
@@ -329,6 +356,15 @@ class NtpReports
           templates['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
           templates['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
 
+          #staff users
+          if role == 'rti-staff'
+            templates['result']['staff']['users'][username]                    ||= {}
+            #templates['result']['staff']['users'][username][county]            ||= {}
+            #templates['result']['staff']['users'][username][county][zone]      ||= {}
+            templates['result']['staff']['users'][username]['role']              = role
+            templates['result']['staff']['users'][username]['data']            ||= user['doc']
+          end
+          
           # only do this if there is a valid subcounty taht currently exists
           if !subCounty.nil?
 
@@ -479,7 +515,7 @@ class NtpReports
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-              { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
+              { 'label' => 'CSO',             'value' => titleize(trip['value']['user'].downcase) },
               { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
               { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
             ]
@@ -513,7 +549,7 @@ class NtpReports
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-              { 'label' => 'TAC tutor',       'value' => titleize(trip['value']['user'].downcase) },
+              { 'label' => 'CSO',       'value' => titleize(trip['value']['user'].downcase) },
               { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
               { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
             ]
@@ -815,6 +851,97 @@ class NtpReports
     end
 
   end # of processTrip
+
+  #
+  #
+  #process trip information for staff
+  #
+  #
+  def processStaffTrip(trip, monthData, templates, workflows)
+
+    workflowId = trip['value']['workflowId'] || trip['id']
+    username   = trip['value']['user']       || ""
+
+    # handle case of irrelevant workflow 
+    return err(true, "Incomplete or Invalid Workflow: #{workflowId}") if not workflows[workflowId]
+    return err(true, "Workflow does not get pre-processed: #{workflowId}") if not workflows[workflowId]['reporting']['preProcess']
+
+    # validate user and role-workflow assocaition
+    return err(true, "User does not exist: #{username}") if not templates['users']['all'][username]
+    userRole = templates['users']['all'][username]['role']
+    return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['reporting']['targetRoles']}") if not workflows[workflowId]['reporting']['targetRoles'].include? userRole
+
+    # validate against the workflow constraints
+    validated = validateTrip(trip, workflows[workflowId])
+    return err(true, "Trip did not validate against workflow constraints") if not validated
+
+    # verify school
+    return err(true, "School was not found in trip") if trip['value']['school'].nil?
+          
+    schoolId      = trip['value']['school']
+    return err(true, "School was not found in database") if templates['locationBySchool'][schoolId].nil?
+
+    zoneId        = templates['locationBySchool'][schoolId]['zoneId']        || ""
+    subCountyId   = templates['locationBySchool'][schoolId]['subCountyId']   || ""
+    countyId      = templates['locationBySchool'][schoolId]['countyId']      || ""
+    username      = trip['value']['user'].downcase
+
+    #check workflow id is rti tool
+    if workflowId == "1d67fd61-fb6b-fa4a-c4a1-0d2f1af421da" and userRole == "rti-staff"
+      
+      puts "** Start Processing Staff Trip"
+      
+      monthData['result']['staff']['byCounty'][countyId]['users'][username]                     ||= {}
+      monthData['result']['staff']['byCounty'][countyId]['users'][username]['visits']           ||= 0
+      monthData['result']['staff']['users'][username]['total']                                  ||= 0
+      monthData['result']['staff']['users'][username]['visits']                                 ||= {}
+      monthData['result']['staff']['users'][username]['visits'][countyId]                       ||= {}
+      monthData['result']['staff']['users'][username]['visits'][countyId]['visits']             ||= 0
+      monthData['result']['staff']['users'][username]['visits'][countyId]['quota']              ||= 0
+
+      monthData['result']['staff']['byCounty'][countyId]['visits']                               += 1 
+      monthData['result']['staff']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
+      
+      monthData['result']['staff']['byCounty'][countyId]['users'][username]['visits']            += 1
+      monthData['result']['staff']['users'][username]['total']                                   += 1
+      
+      monthData['result']['staff']['users'][username]['visits'][countyId]['name']                 = templates['result']['staff']['byCounty'][countyId]['name'] 
+      monthData['result']['staff']['users'][username]['visits'][countyId]['visits']              += 1
+      monthData['result']['staff']['users'][username]['visits'][countyId]['quota']                = templates['result']['staff']['byCounty'][countyId]['quota']
+      
+      monthData['result']['staff']['national']['visits']                                         += 1
+    
+
+       #
+          # Process geoJSON data for mapping
+          #
+          if !trip['value']['gpsData'].nil?
+            point = trip['value']['gpsData']
+
+            if !@timezone.nil?
+              startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+            else 
+              startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+            end
+
+            point['role'] = "staff"
+            point['properties'] = [
+              { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
+              { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
+              { 'label' => 'Class',           'value' => trip['value']['class'] },
+              { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
+              { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
+              { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
+              { 'label' => 'Staff',           'value' => titleize(trip['value']['user'].downcase) },
+              { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
+              { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+            ]
+
+            monthData['geoJSON']['byCounty'][countyId]['data'].push point
+          end
+    end
+
+  end #end processStaffTrips
 
 #
 #
