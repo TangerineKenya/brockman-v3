@@ -138,6 +138,31 @@ class Brockman < Sinatra::Base
         </tbody>
       </table>"
 
+    zoneTable = "<table class='county-table'>
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th>Number of classroom visits<br>
+            <small>( Percentage of Target Visits)</small></th>
+            
+          </tr>
+        </thead>
+        <tbody>
+          #{ result['staff']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+            visits          = zone['visits']
+            quota           = result['staff']['byCounty'][currentCountyId]['quota']
+            zoneName        = zone['name']
+            "
+              <tr>
+                <td>#{titleize(zoneName)}</td>
+                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                
+              </tr>
+            "}.join }
+            
+        </tbody>
+      </table>"
+
     countyTab = "<h2>Staff Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
       <hr>
       <h2>Counties</h2>
@@ -147,7 +172,9 @@ class Brockman < Sinatra::Base
         #{titleize(currentCountyName)} County Report
       </h2>
       #{userCountyTable}
-
+      <br>
+      #{zoneTable}
+      <br>
       <div id='staff-map-loading'>Please wait. Data loading...</div>
       <div id='staff-map' style='height: 400px'></div>
       <br>
