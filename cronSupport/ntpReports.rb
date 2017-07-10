@@ -111,6 +111,7 @@ class NtpReports
 
     templates['result']['staff']['national']                   ||= {}
     templates['result']['staff']['national']['visits']         ||= 0
+    templates['result']['staff']['national']['gpsvisits']      ||= 0
     templates['result']['staff']['national']['quota']          ||= 0
     #
     # Retrieve Shool Locations and Quotas
@@ -180,6 +181,7 @@ class NtpReports
       templates['result']['staff']['byCounty'][countyId]                  ||= {}
       templates['result']['staff']['byCounty'][countyId]['name']          ||= county['label']
       templates['result']['staff']['byCounty'][countyId]['visits']        ||= 0
+      templates['result']['staff']['byCounty'][countyId]['gpsvisits']     ||= 0
       templates['result']['staff']['byCounty'][countyId]['quota']         ||= 0
       templates['result']['staff']['byCounty'][countyId]['zones']         ||= {}
       templates['result']['staff']['byCounty'][countyId]['users']         ||= {}
@@ -274,6 +276,7 @@ class NtpReports
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['visits']         ||= 0
+          templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['gpsvisits']      ||= 0
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
           templates['result']['staff']['national']['quota']                                      += 1
           #templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          += 1
@@ -433,7 +436,7 @@ class NtpReports
     subCountyId   = templates['locationBySchool'][schoolId]['subCountyId']   || ""
     countyId      = templates['locationBySchool'][schoolId]['countyId']      || ""
     username      = trip['value']['user'].downcase
-    
+
     #
     # Handle Role-specific calculations
     #
@@ -889,30 +892,52 @@ class NtpReports
     #check workflow id is rti tool
     if workflowId == "1d67fd61-fb6b-fa4a-c4a1-0d2f1af421da" and userRole == "rti-staff"
       
-      puts "** Start Processing Staff Trip"
+      subject = trip['value']
+
+      puts "** Start Processing Staff Trip #{subject}"
       
       monthData['result']['staff']['byCounty'][countyId]['users'][username]                     ||= {}
       monthData['result']['staff']['byCounty'][countyId]['users'][username]['visits']           ||= 0
+      monthData['result']['staff']['byCounty'][countyId]['users'][username]['gpsvisits']        ||= 0
       monthData['result']['staff']['users'][username]['total']                                  ||= 0
       monthData['result']['staff']['users'][username]['visits']                                 ||= {}
       monthData['result']['staff']['users'][username]['visits'][countyId]                       ||= {}
       monthData['result']['staff']['users'][username]['visits'][countyId]['visits']             ||= 0
+      monthData['result']['staff']['users'][username]['visits'][countyId]['gpsvisits']          ||= 0
       monthData['result']['staff']['users'][username]['visits'][countyId]['quota']              ||= 0
 
-      monthData['result']['staff']['byCounty'][countyId]['visits']                               += 1 
-      monthData['result']['staff']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
       
-      monthData['result']['staff']['byCounty'][countyId]['users'][username]['visits']            += 1
       monthData['result']['staff']['users'][username]['total']                                   += 1
       
       monthData['result']['staff']['users'][username]['visits'][countyId]['name']                 = templates['result']['staff']['byCounty'][countyId]['name'] 
-      monthData['result']['staff']['users'][username]['visits'][countyId]['visits']              += 1
+      
       monthData['result']['staff']['users'][username]['visits'][countyId]['quota']                = templates['result']['staff']['byCounty'][countyId]['quota']
       
-      monthData['result']['staff']['national']['visits']                                         += 1
-    
+      
+      
+      #separate trips with gps and those without
+      if !trip['value']['gpsData'].nil?
+        monthData['result']['staff']['byCounty'][countyId]['gpsvisits']                            += 1 
+        monthData['result']['staff']['byCounty'][countyId]['zones'][zoneId]['gpsvisits']           += 1
+      
+        monthData['result']['staff']['byCounty'][countyId]['users'][username]['gpsvisits']         += 1
+        monthData['result']['staff']['users'][username]['visits'][countyId]['gpsvisits']           += 1
 
-       #
+        monthData['result']['staff']['national']['gpsvisits']                                      += 1
+
+      else
+
+        monthData['result']['staff']['byCounty'][countyId]['visits']                               += 1 
+        monthData['result']['staff']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
+      
+        monthData['result']['staff']['byCounty'][countyId]['users'][username]['visits']            += 1
+        monthData['result']['staff']['users'][username]['visits'][countyId]['visits']              += 1
+
+        monthData['result']['staff']['national']['visits']                                         += 1
+      end
+        
+
+          #
           # Process geoJSON data for mapping
           #
           if !trip['value']['gpsData'].nil?

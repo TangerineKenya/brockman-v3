@@ -78,15 +78,17 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th class='custSort'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits - With GPS<a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            
+            <th class='custSort'>Number of classroom visits - Without GPS<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
           </tr>
         </thead>
         <tbody>
           #{ result['staff']['byCounty'].map{ | countyId, county |
 
             countyName      = county['name']
+            gpsvisits       = county['gpsvisits']
             visits          = county['visits']
             quota           = county['quota']
             sampleTotal     = 0
@@ -94,11 +96,13 @@ class Brockman < Sinatra::Base
             "
               <tr>
                 <td>#{titleize(countyName)}</td>
+                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
               </tr>
             "}.join }
             <tr>
               <td>All</td>
+              <td>#{result['staff']['national']['gpsvisits']} ( #{percentage( result['staff']['national']['quota'], result['staff']['national']['gpsvisits'] )}% )</td>
               <td>#{result['staff']['national']['visits']} ( #{percentage( result['staff']['national']['quota'], result['staff']['national']['visits'] )}% )</td>
             </tr>
         </tbody>
@@ -118,20 +122,22 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>Staff name</th>
-            <th>Number of classroom visits<br>
+            <th>Number of classroom visits - With GPS<br>
             <small>( Percentage of Target Visits)</small></th>
-            
+            <th>Number of classroom visits - Without GPS<br>
+            <small>( Percentage of Target Visits)</small></th>
           </tr>
         </thead>
         <tbody>
           #{ result['staff']['byCounty'][currentCountyId]['users'].map{ | userId, user |
             visits          = user['visits']
+            gpsvisits       = user['gpsvisits']
             quota           = result['staff']['byCounty'][currentCountyId]['quota']
             "
               <tr>
                 <td>#{titleize(userId)}</td>
+                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                
               </tr>
             "}.join }
             
@@ -142,21 +148,23 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>Zone</th>
-            <th>Number of classroom visits<br>
+            <th>Number of classroom visits - With GPS<br>
             <small>( Percentage of Target Visits)</small></th>
-            
+            <th>Number of classroom visits - Without GPS<br>
+            <small>( Percentage of Target Visits)</small></th>
           </tr>
         </thead>
         <tbody>
           #{ result['staff']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
             visits          = zone['visits']
+            gpsvisits       = zone['gpsvisits']
             quota           = result['staff']['byCounty'][currentCountyId]['quota']
             zoneName        = zone['name']
             "
               <tr>
                 <td>#{titleize(zoneName)}</td>
+                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-                
               </tr>
             "}.join }
             
