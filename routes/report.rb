@@ -658,7 +658,7 @@ class Brockman < Sinatra::Base
                     cl3percentage = "( #{percentage( cl3sample['size'], cl3benchmark )}% )"
                   end
                 end
-                "<td>#{cl1average} <span>#{cl1percentage}</span></td>
+                "<td>#{cl1average}  <span>#{cl1percentage}</span></td>
                   <td>#{cl2average} <span>#{cl2percentage}</span></td>
                   <td>#{cl3average} <span>#{cl3percentage}</span></td>"
               }.join}
@@ -785,8 +785,8 @@ class Brockman < Sinatra::Base
       <small>
 
       <ol>
-        <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
-        <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
+        <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any school days during the selected month.</li>
+        <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of schools in each zone.</li>
         <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
         <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either Kiswahili or English, and for either class 1, class 2 or class 3, out of all of the students assessed for those subjects. The benchmarks for class 3 are yet to be defined.</li>
       </ol>
