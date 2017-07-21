@@ -171,9 +171,38 @@ class Brockman < Sinatra::Base
         </tbody>
       </table>"
 
+      schoolsTable = "<table class='county-table'>
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th>School</th>
+            <th>Number of classroom visits - With GPS<br>
+            <small>( Percentage of Target Visits)</small></th>
+            <th>Number of classroom visits - Without GPS<br>
+            <small>( Percentage of Target Visits)</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          #{ result['staff']['byCounty'][currentCountyId]['schools'].map{ | schoolId, school |
+            visits          = school['visits']
+            gpsvisits       = school['gpsvisits']
+            quota           = result['staff']['byCounty'][currentCountyId]['quota']
+            schoolName      = school['name']
+            zoneName        = school['zone']
+            "
+              <tr>
+                <td>#{titleize(zoneName)}</td>
+                <td>#{titleize(schoolName)}</td>
+                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
+                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+              </tr>
+            "}.join }
+              
+        </tbody>
+      </table>"
+
     countyTab = "<h2>Staff Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
       <hr>
-      <h2>Counties</h2>
       #{countyTable}
       <br>
        <h2>
@@ -188,10 +217,10 @@ class Brockman < Sinatra::Base
       <br>
       <a id='staff-view-all-btn' class='btn' href='#'>View All County Data</a>"
 
-    userTab = "<h2>Staff County Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
+    userTab = "<h2>#{titleize(currentCountyName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
       <hr>
-      <h2>Counties</h2>
-      <br>"
+      <br>
+      #{schoolsTable}"
 
     html =  "<html>
       <head>
@@ -461,8 +490,12 @@ class Brockman < Sinatra::Base
 
           <div class='tab_container'>
             <div id='tab-tutor' class='tab first selected' data-id='tutor'>County</div>
+            <div id='tab-user' class='tab' data-id='user'>Schools</div>
             <section id='panel-tutor' class='tab-panel' style=''>
               #{countyTab}
+            </section>
+            <section id='panel-user' class='tab-panel' style='display:none;'>
+              #{userTab}
             </section>
           </div>
 

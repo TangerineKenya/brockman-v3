@@ -113,6 +113,7 @@ class NtpReports
     templates['result']['staff']['national']['visits']         ||= 0
     templates['result']['staff']['national']['gpsvisits']      ||= 0
     templates['result']['staff']['national']['quota']          ||= 0
+
     #
     # Retrieve Shool Locations and Quotas
     #
@@ -185,6 +186,7 @@ class NtpReports
       templates['result']['staff']['byCounty'][countyId]['quota']         ||= 0
       templates['result']['staff']['byCounty'][countyId]['zones']         ||= {}
       templates['result']['staff']['byCounty'][countyId]['users']         ||= {}
+      templates['result']['staff']['byCounty'][countyId]['schools']       ||= {}
 
       #manually flatten out the subCounty data level
       county['children'].map { | subCountyId, subCounty | 
@@ -279,6 +281,7 @@ class NtpReports
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['gpsvisits']      ||= 0
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
           templates['result']['staff']['national']['quota']                                      += 1
+          
           #templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          += 1
 
           #init container for users
@@ -298,6 +301,13 @@ class NtpReports
             templates['locationBySchool'][schoolId]['countyId']        = countyId
             templates['locationBySchool'][schoolId]['subCountyId']     = subCountyId
             templates['locationBySchool'][schoolId]['zoneId']          = zoneId
+
+            #staff data
+            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]                ||= {}
+            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['name']        ||= school['label']
+            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['zone']        ||= zone['label']
+            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['visits']      ||= 0
+            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['gpsvisits']   ||= 0
           }
         }
       } 
@@ -875,8 +885,8 @@ class NtpReports
     return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['reporting']['targetRoles']}") if not workflows[workflowId]['reporting']['targetRoles'].include? userRole
 
     # validate against the workflow constraints
-    validated = validateTrip(trip, workflows[workflowId])
-    return err(true, "Trip did not validate against workflow constraints") if not validated
+    #validated = validateTrip(trip, workflows[workflowId])
+    #return err(true, "Trip did not validate against workflow constraints") if not validated
 
     # verify school
     return err(true, "School was not found in trip") if trip['value']['school'].nil?
@@ -892,9 +902,9 @@ class NtpReports
     #check workflow id is rti tool
     if workflowId == "1d67fd61-fb6b-fa4a-c4a1-0d2f1af421da" and userRole == "rti-staff"
       
-      subject = trip['value']
+      subject = trip
 
-      puts "** Start Processing Staff Trip #{subject}"
+      puts "** Start Processing Staff Trip"
       
       monthData['result']['staff']['byCounty'][countyId]['users'][username]                     ||= {}
       monthData['result']['staff']['byCounty'][countyId]['users'][username]['visits']           ||= 0
@@ -913,8 +923,6 @@ class NtpReports
       
       monthData['result']['staff']['users'][username]['visits'][countyId]['quota']                = templates['result']['staff']['byCounty'][countyId]['quota']
       
-      
-      
       #separate trips with gps and those without
       if !trip['value']['gpsData'].nil?
         monthData['result']['staff']['byCounty'][countyId]['gpsvisits']                            += 1 
@@ -925,6 +933,8 @@ class NtpReports
 
         monthData['result']['staff']['national']['gpsvisits']                                      += 1
 
+        monthData['result']['staff']['byCounty'][countyId]['schools'][schoolId]['gpsvisits'] += 1
+
       else
 
         monthData['result']['staff']['byCounty'][countyId]['visits']                               += 1 
@@ -934,6 +944,8 @@ class NtpReports
         monthData['result']['staff']['users'][username]['visits'][countyId]['visits']              += 1
 
         monthData['result']['staff']['national']['visits']                                         += 1
+
+        monthData['result']['staff']['byCounty'][countyId]['schools'][schoolId]['visits'] += 1
       end
         
 
