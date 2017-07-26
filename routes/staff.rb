@@ -219,6 +219,15 @@ class Brockman < Sinatra::Base
 
     userTab = "<h2>#{titleize(currentCountyName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
       <hr>
+      <label for='school-county-select'>County</label>
+        <select id='school-county-select'>
+          #{
+            orderedCounties = result['staff']['byCounty'].sort_by{ |countyId, county| county['name'] }
+            orderedCounties.map{ | countyId, county |
+              "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
+            }.join("")
+          }
+        </select>
       <br>
       #{schoolsTable}"
 
@@ -347,6 +356,12 @@ class Brockman < Sinatra::Base
 
               $('#county-select').on('change',function() {
                 currCounty = $('#county-select').val()
+                
+                reloadReport();
+              });
+
+              $('#school-county-select').on('change',function() {
+                currCounty = $('#school-county-select').val()
                 
                 reloadReport();
               });
