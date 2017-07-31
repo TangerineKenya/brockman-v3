@@ -152,6 +152,17 @@ class Brockman < Sinatra::Base
         </tbody>
       </table>"
 
+
+    #build user list from selected periods
+    users = []
+    months.each{ | m |
+       results[m]['staff']['byCounty'][currentCountyId]['users'].map{ | userId, user |
+          users.push userId
+       }
+    }
+    
+    users = users.uniq
+
     userCountyTable = "
       <label for='county-select'>County</label>
         <select id='county-select'>
@@ -173,7 +184,8 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
-          #{ result['staff']['byCounty'][currentCountyId]['users'].map{ | userId, user |
+
+          #{ users.map{ | userId |
             
             quota           = result['staff']['byCounty'][currentCountyId]['quota']
           
@@ -293,7 +305,7 @@ class Brockman < Sinatra::Base
       <div id='staff-map-loading'>Please wait. Data loading...</div>
       <div id='staff-map' style='height: 400px'></div>
       <br>
-      <a id='staff-view-all-btn' class='btn' href='#'>View All County Data</a>"
+      "
 
     userTab = "<h2>#{titleize(currentCountyName)} - #{titleize(currentZoneName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]} - #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][endMonth.to_i]})</h2>
       <hr>
@@ -355,9 +367,17 @@ class Brockman < Sinatra::Base
           };
 
           var mapDataURL = new Array();
-          mapDataURL['current'] = base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{month.to_i}-#{currentCountyId}.geojson';
+          mapDataURL['current'] = new Array();
           mapDataURL['all'] = new Array();
 
+          mapDataURL['current']
+          #{
+            months.map{ | m |
+              "mapDataURL['current'].push(base+'reportData/#{group}/report-aggregate-geo-year#{year.to_i}month#{m.to_i}-#{currentCountyId}.geojson');
+              "
+            }.join("")
+          }
+          
           mapDataURL['all']
           #{
             result['staff']['byCounty'].map{ | countyId, county |
