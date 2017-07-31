@@ -14,11 +14,12 @@ class Brockman < Sinatra::Base
   # Start of report
   #
 
-  get '/staff/:group/:year/:month/:county.:format?' do | group, year, month, county, format |
+  get '/staff/:group/:year/:month/:endMonth/:county/:zone.:format?' do | group, year, month, endMonth, county, zone, format |
 
     format = "html" unless format == "json"
     
     countyId = county
+    zoneId   = zone
 
     requestId = SecureRandom.base64
 
@@ -42,7 +43,15 @@ class Brockman < Sinatra::Base
     # 
     begin
       reportSettings = couch.getRequest({ :doc => "report-aggregate-settings", :parseJson => true })
-      result = couch.getRequest({ :doc => "report-aggregate-year#{year}month#{month}", :parseJson => true })
+      result  = couch.getRequest({ :doc => "report-aggregate-year#{year}month#{month}", :parseJson => true })
+      results = {}
+      months  = []
+      #loop on months selected
+      (month..endMonth).each { |mnt|
+        months.push mnt
+        results[mnt] = couch.getRequest({ :doc => "report-aggregate-year#{year}month#{mnt}", :parseJson => true })
+      }
+
     rescue => e
       # the doc doesn't already exist
       puts e
@@ -53,11 +62,15 @@ class Brockman < Sinatra::Base
     currentCountyId       = nil
     currentCounty         = nil
     currentCountyName     = nil
+    
+    currentZoneId         = nil
+    currentZoneName       = nil
+    currentZone           = nil 
 
    
     #ensure that the county in the URL is valid - if not, select the first
-    if result['visits']['byCounty'][countyId].nil?
-      result['visits']['byCounty'].find { |countyId, county|
+    if result['staff']['byCounty'][countyId].nil?
+      result['staff']['byCounty'].find { |countyId, county|
         currentCountyId   = countyId
         currentCounty     = county
         currentCountyName = county['name']
@@ -65,8 +78,22 @@ class Brockman < Sinatra::Base
       }
     else 
       currentCountyId   = countyId
-      currentCounty     = result['visits']['byCounty'][countyId]
+      currentCounty     = result['staff']['byCounty'][countyId]
       currentCountyName = currentCounty['name']
+    end
+
+    #ensure that the zone in the URL is valid - if not, select the first
+    if result['staff']['byCounty'][countyId]['zones'][zoneId].nil?
+        result['staff']['byCounty'][countyId]['zones'].find { |zoneId, zone|
+          currentZoneId   = zoneId
+          currentZone     = zone
+          currentZoneName = zone['name']
+          true
+        }
+    else 
+        currentZoneId   = zoneId
+        currentZone     = result['staff']['byCounty'][countyId]['zones'][zoneId]
+        currentZoneName = currentZone['name']
     end
 
     #retrieve a county list for the select and sort it
@@ -74,6 +101,14 @@ class Brockman < Sinatra::Base
 
     #county level data
     row = 0
+    totalNationalGpsVisits = 0
+    totalNationaVisits     = 0
+
+    #national totals
+    months.each{ | m |
+      totalNationalGpsVisits += results[m]['staff']['national']['gpsvisits']
+      totalNationaVisits     += results[m]['staff']['national']['visits']
+    }
     countyTable = "<table class='county-table'>
         <thead>
           <tr>
@@ -85,6 +120,7 @@ class Brockman < Sinatra::Base
           </tr>
         </thead>
         <tbody>
+          
           #{ result['staff']['byCounty'].map{ | countyId, county |
 
             countyName      = county['name']
@@ -93,17 +129,25 @@ class Brockman < Sinatra::Base
             quota           = county['quota']
             sampleTotal     = 0
 
+            totalGpsVisits = 0
+            totalVisits    = 0
+            
+            months.each{ | m |
+              totalGpsVisits += results[m]['staff']['byCounty'][countyId]['gpsvisits']
+              totalVisits    += results[m]['staff']['byCounty'][countyId]['visits']
+            }
+
             "
               <tr>
                 <td>#{titleize(countyName)}</td>
-                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
-                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                <td>#{totalGpsVisits} ( #{percentage( quota, totalGpsVisits)}% )</td>
+                <td>#{totalVisits} ( #{percentage( quota, totalVisits )}% )</td>
               </tr>
             "}.join }
             <tr>
               <td>All</td>
-              <td>#{result['staff']['national']['gpsvisits']} ( #{percentage( result['staff']['national']['quota'], result['staff']['national']['gpsvisits'] )}% )</td>
-              <td>#{result['staff']['national']['visits']} ( #{percentage( result['staff']['national']['quota'], result['staff']['national']['visits'] )}% )</td>
+              <td>#{totalNationalGpsVisits} ( #{percentage( result['staff']['national']['quota'], totalNationalGpsVisits )}% )</td>
+              <td>#{totalNationaVisits} ( #{percentage( result['staff']['national']['quota'], totalNationaVisits )}% )</td>
             </tr>
         </tbody>
       </table>"
@@ -130,14 +174,27 @@ class Brockman < Sinatra::Base
         </thead>
         <tbody>
           #{ result['staff']['byCounty'][currentCountyId]['users'].map{ | userId, user |
-            visits          = user['visits']
-            gpsvisits       = user['gpsvisits']
+            
             quota           = result['staff']['byCounty'][currentCountyId]['quota']
+          
+            totalGpsVisits = 0
+            totalVisits    = 0
+            
+            months.each{ | m |
+
+              if !results[m]['staff']['byCounty'][currentCountyId]['users'][userId].nil?
+                totalGpsVisits += results[m]['staff']['byCounty'][currentCountyId]['users'][userId]['gpsvisits']
+                totalVisits    += results[m]['staff']['byCounty'][currentCountyId]['users'][userId]['visits']
+
+              end              
+              
+            }
+
             "
               <tr>
                 <td>#{titleize(userId)}</td>
-                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
-                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                <td>#{totalGpsVisits} ( #{percentage( quota, totalGpsVisits )}% )</td>
+                <td>#{totalVisits} ( #{percentage( quota, totalVisits)}% )</td>
               </tr>
             "}.join }
             
@@ -160,48 +217,69 @@ class Brockman < Sinatra::Base
             gpsvisits       = zone['gpsvisits']
             quota           = result['staff']['byCounty'][currentCountyId]['quota']
             zoneName        = zone['name']
+
+            totalGpsVisits = 0
+            totalVisits    = 0
+            
+            months.each{ | m |
+
+              totalGpsVisits += results[m]['staff']['byCounty'][currentCountyId]['zones'][zoneId]['gpsvisits']
+              totalVisits    += results[m]['staff']['byCounty'][currentCountyId]['zones'][zoneId]['visits']  
+              
+              
+            }
+
             "
               <tr>
                 <td>#{titleize(zoneName)}</td>
-                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
-                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                <td>#{totalGpsVisits} ( #{percentage( quota, totalGpsVisits )}% )</td>
+                <td>#{totalVisits} ( #{percentage( quota, totalVisits )}% )</td>
               </tr>
             "}.join }
             
         </tbody>
       </table>"
 
-      schoolsTable = "<table class='county-table'>
+    schoolsTable = "<table class='county-table'>
         <thead>
           <tr>
-            <th>Zone</th>
             <th>School</th>
-            <th>Number of classroom visits - With GPS<br>
-            <small>( Percentage of Target Visits)</small></th>
-            <th>Number of classroom visits - Without GPS<br>
-            <small>( Percentage of Target Visits)</small></th>
+            <th>Number of classroom visits - With GPS</th>
+            <th>Number of classroom visits - Without GPS</th>
           </tr>
         </thead>
         <tbody>
-          #{ result['staff']['byCounty'][currentCountyId]['schools'].map{ | schoolId, school |
+          #{ result['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'].map{ | schoolId, school |
             visits          = school['visits']
             gpsvisits       = school['gpsvisits']
             quota           = result['staff']['byCounty'][currentCountyId]['quota']
             schoolName      = school['name']
-            zoneName        = school['zone']
+            
+            totalGpsVisits = 0
+            totalVisits    = 0
+
+            months.each{ | m |
+
+              if ! results[m]['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'][schoolId].nil?
+                totalGpsVisits += results[m]['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'][schoolId]['gpsvisits']
+                totalVisits    += results[m]['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'][schoolId]['visits']  
+              end
+              
+            }
+
             "
               <tr>
-                <td>#{titleize(zoneName)}</td>
+               
                 <td>#{titleize(schoolName)}</td>
-                <td>#{gpsvisits} ( #{percentage( quota, gpsvisits )}% )</td>
-                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                <td>#{totalGpsVisits}</td>
+                <td>#{totalVisits}</td>
               </tr>
             "}.join }
               
         </tbody>
       </table>"
 
-    countyTab = "<h2>Staff Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
+    countyTab = "<h2>Staff Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]} - #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][endMonth.to_i]})</h2>
       <hr>
       #{countyTable}
       <br>
@@ -217,7 +295,7 @@ class Brockman < Sinatra::Base
       <br>
       <a id='staff-view-all-btn' class='btn' href='#'>View All County Data</a>"
 
-    userTab = "<h2>#{titleize(currentCountyName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
+    userTab = "<h2>#{titleize(currentCountyName)} - #{titleize(currentZoneName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]} - #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][endMonth.to_i]})</h2>
       <hr>
       <label for='school-county-select'>County</label>
         <select id='school-county-select'>
@@ -225,6 +303,15 @@ class Brockman < Sinatra::Base
             orderedCounties = result['staff']['byCounty'].sort_by{ |countyId, county| county['name'] }
             orderedCounties.map{ | countyId, county |
               "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
+            }.join("")
+          }
+        </select>&nbsp;
+        <label for='school-zone-select'>Zone</label>
+        <select id='school-zone-select'>
+          #{
+            orderedCounties = result['staff']['byCounty'][currentCountyId]['zones'].sort_by{ |zoneId, zone| zone['name'] }
+            orderedCounties.map{ | zoneId, zone |
+              "<option value='#{zoneId}' #{"selected" if zoneId == currentZoneId}>#{titleize(zone['name'])}</option>"
             }.join("")
           }
         </select>
@@ -336,7 +423,7 @@ class Brockman < Sinatra::Base
           };
 
           $(document).ready( function() {
-
+             
               /***********
               **
               **   Init Custom Data Tables
@@ -350,6 +437,8 @@ class Brockman < Sinatra::Base
               });
 
               var currCounty = '#{countyId}';
+              var zone = '#{zoneId}';
+
               $('#year-select,#month-select').on('change',function() {
                 reloadReport();
               });
@@ -366,11 +455,17 @@ class Brockman < Sinatra::Base
                 reloadReport();
               });
 
+              $('#school-zone-select').on('change',function() {
+                  zone = $('#school-zone-select').val()
+                  reloadReport();
+              });
+
               function reloadReport(){
                 year    = $('#year-select').val().toLowerCase()
                 month   = $('#month-select').val().toLowerCase()
-                console.log(currCounty, year, month)
-                document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/staff/#{group}/'+year+'/'+month+'/'+currCounty+'.html';
+                endMonth   = $('#end-month-select').val().toLowerCase()
+                console.log(currCounty, zone, year, month)
+                document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/staff/#{group}/'+year+'/'+month+'/'+endMonth+'/'+currCounty+'/'+zone+'.html';
               }
 
             /***********
@@ -501,6 +596,22 @@ class Brockman < Sinatra::Base
           <option value='10' #{"selected" if month == "10"}>Oct</option>
           <option value='11' #{"selected" if month == "11"}>Nov</option>
           <!--<option value='12' #{"selected" if month == "12"}>Dec</option>-->
+        </select>
+
+        <label for='end-month-select'>Month</label>
+        <select id='end-month-select'>
+          <option value='1'  #{"selected" if endMonth == "1"}>Jan</option>
+          <option value='2'  #{"selected" if endMonth == "2"}>Feb</option>
+          <option value='3'  #{"selected" if endMonth == "3"}>Mar</option>
+          <!--<option value='4'  #{"selected" if endMonth == "4"}>Apr</option>-->
+          <option value='5'  #{"selected" if endMonth == "5"}>May</option>
+          <option value='6'  #{"selected" if endMonth == "6"}>Jun</option>
+          <option value='7'  #{"selected" if endMonth == "7"}>Jul</option>
+          <!--<option value='8'  #{"selected" if endMonth == "8"}>Aug</option>-->
+          <option value='9'  #{"selected" if endMonth == "9"}>Sep</option>
+          <option value='10' #{"selected" if endMonth == "10"}>Oct</option>
+          <option value='11' #{"selected" if endMonth == "11"}>Nov</option>
+          <!--<option value='12' #{"selected" if endMonth == "12"}>Dec</option>-->
         </select>
 
           <div class='tab_container'>

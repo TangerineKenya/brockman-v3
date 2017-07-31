@@ -281,6 +281,7 @@ class NtpReports
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['gpsvisits']      ||= 0
           templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
           templates['result']['staff']['national']['quota']                                      += 1
+          templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools']        ||= {}
           
           #templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['quota']          += 1
 
@@ -303,11 +304,12 @@ class NtpReports
             templates['locationBySchool'][schoolId]['zoneId']          = zoneId
 
             #staff data
-            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]                ||= {}
-            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['name']        ||= school['label']
-            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['zone']        ||= zone['label']
-            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['visits']      ||= 0
-            templates['result']['staff']['byCounty'][countyId]['schools'][schoolId]['gpsvisits']   ||= 0
+            templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]                ||= {}
+            templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['name']        ||= school['label']
+            templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['zone']        ||= zone['label']
+            templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['zoneId']      ||= zoneId
+            templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits']      ||= 0
+            templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['gpsvisits']   ||= 0
           }
         }
       } 
@@ -933,7 +935,7 @@ class NtpReports
 
         monthData['result']['staff']['national']['gpsvisits']                                      += 1
 
-        monthData['result']['staff']['byCounty'][countyId]['schools'][schoolId]['gpsvisits'] += 1
+        monthData['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['gpsvisits'] += 1
 
       else
 
@@ -945,7 +947,7 @@ class NtpReports
 
         monthData['result']['staff']['national']['visits']                                         += 1
 
-        monthData['result']['staff']['byCounty'][countyId]['schools'][schoolId]['visits'] += 1
+        monthData['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits'] += 1
       end
         
 
