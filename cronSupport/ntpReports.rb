@@ -969,9 +969,7 @@ class NtpReports
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-              { 'label' => 'Staff',           'value' => titleize(trip['value']['user'].downcase) },
-              { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-              { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+              { 'label' => 'Staff',           'value' => titleize(trip['value']['user'].downcase) }
             ]
 
             monthData['geoJSON']['byCounty'][countyId]['data'].push point
