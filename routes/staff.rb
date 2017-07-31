@@ -459,7 +459,7 @@ class Brockman < Sinatra::Base
               var currCounty = '#{countyId}';
               var zone = '#{zoneId}';
 
-              $('#year-select,#month-select').on('change',function() {
+              $('#year-select,#month-select,#end-month-select').on('change',function() {
                 reloadReport();
               });
 
