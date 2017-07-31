@@ -966,8 +966,6 @@ class NtpReports
             point['role'] = "staff"
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-              { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-              { 'label' => 'Class',           'value' => trip['value']['class'] },
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
