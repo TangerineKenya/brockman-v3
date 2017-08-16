@@ -310,6 +310,14 @@ class NtpReports
             templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['zoneId']      ||= zoneId
             templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits']      ||= 0
             templates['result']['staff']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['gpsvisits']   ||= 0
+
+            #track visits to schools
+            templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools']                          ||= {}
+            templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]                ||= {}
+            templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['name']        ||= school['label']
+            #templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['zone']        ||= zone['label']
+            #templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['zoneId']      ||= zoneId
+            templates['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits']      ||= 0
           }
         }
       } 
@@ -544,6 +552,9 @@ class NtpReports
           monthData['result']['visits']['byCounty'][countyId]['visits']                               += 1 
           monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
           
+          #school visits
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits']   += 1
+
           #
           # Process geoJSON data for mapping
           #
@@ -887,8 +898,8 @@ class NtpReports
     return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['reporting']['targetRoles']}") if not workflows[workflowId]['reporting']['targetRoles'].include? userRole
 
     # validate against the workflow constraints
-    #validated = validateTrip(trip, workflows[workflowId])
-    #return err(true, "Trip did not validate against workflow constraints") if not validated
+    validated = validateTrip(trip, workflows[workflowId])
+    return err(true, "Trip did not validate against workflow constraints") if not validated
 
     # verify school
     return err(true, "School was not found in trip") if trip['value']['school'].nil?

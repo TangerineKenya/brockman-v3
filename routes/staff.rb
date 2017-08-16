@@ -14,12 +14,12 @@ class Brockman < Sinatra::Base
   # Start of report
   #
 
-  get '/staff/:group/:year/:month/:endMonth/:county/:zone.:format?' do | group, year, month, endMonth, county, zone, format |
+  get '/staff/:group/:year/:month/:endMonth/:county.:format?' do | group, year, month, endMonth, county, format |
 
     format = "html" unless format == "json"
     
     countyId = county
-    zoneId   = zone
+    #zoneId   = zone
 
     requestId = SecureRandom.base64
 
@@ -63,9 +63,9 @@ class Brockman < Sinatra::Base
     currentCounty         = nil
     currentCountyName     = nil
     
-    currentZoneId         = nil
-    currentZoneName       = nil
-    currentZone           = nil 
+    #currentZoneId         = nil
+    #currentZoneName       = nil
+    #currentZone           = nil 
 
    
     #ensure that the county in the URL is valid - if not, select the first
@@ -83,18 +83,18 @@ class Brockman < Sinatra::Base
     end
 
     #ensure that the zone in the URL is valid - if not, select the first
-    if result['staff']['byCounty'][countyId]['zones'][zoneId].nil?
-        result['staff']['byCounty'][countyId]['zones'].find { |zoneId, zone|
-          currentZoneId   = zoneId
-          currentZone     = zone
-          currentZoneName = zone['name']
-          true
-        }
-    else 
-        currentZoneId   = zoneId
-        currentZone     = result['staff']['byCounty'][countyId]['zones'][zoneId]
-        currentZoneName = currentZone['name']
-    end
+    #if result['staff']['byCounty'][countyId]['zones'][zoneId].nil?
+    #    result['staff']['byCounty'][countyId]['zones'].find { |zoneId, zone|
+    #      currentZoneId   = zoneId
+    #      currentZone     = zone
+    #      currentZoneName = zone['name']
+    #      true
+    #    }
+    #else 
+    #    currentZoneId   = zoneId
+    #    currentZone     = result['staff']['byCounty'][countyId]['zones'][zoneId]
+    #    currentZoneName = currentZone['name']
+    #end
 
     #retrieve a county list for the select and sort it
 
@@ -252,42 +252,94 @@ class Brockman < Sinatra::Base
         </tbody>
       </table>"
 
-    schoolsTable = "<table class='county-table'>
-        <thead>
-          <tr>
-            <th>School</th>
-            <th>Number of classroom visits - With GPS</th>
-            <th>Number of classroom visits - Without GPS</th>
-          </tr>
-        </thead>
-        <tbody>
-          #{ result['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'].map{ | schoolId, school |
-            visits          = school['visits']
-            gpsvisits       = school['gpsvisits']
-            quota           = result['staff']['byCounty'][currentCountyId]['quota']
-            schoolName      = school['name']
+    aggregateData ||= {}
+
+    result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+            zoneName = zone['name']
+            visits = zone['visits']
             
-            totalGpsVisits = 0
             totalVisits    = 0
+            status = 'Not Supported'
 
             months.each{ | m |
 
-              if ! results[m]['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'][schoolId].nil?
-                totalGpsVisits += results[m]['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'][schoolId]['gpsvisits']
-                totalVisits    += results[m]['staff']['byCounty'][currentCountyId]['zones'][currentZoneId]['schools'][schoolId]['visits']  
+              if ! results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId].nil?
+                totalVisits    += results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['visits']  
               end
-              
+                            
             }
 
+          if totalVisits > 0
+            status = 'Supported'
+          end
+
+        aggregateData[zoneId] ||= {}
+        aggregateData[zoneId]['zoneName'] = zoneName
+        aggregateData[zoneId]['status']   = status
+        aggregateData[zoneId]['visits']   = totalVisits
+        
+        #schools data
+        totalSchoolVisits = 0
+        schoolStatus = 'Not Supported'
+        result['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'].map{ | schoolId, school |
+          
+        months.each{ | m |
+
+              if ! results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'][schoolId].nil?
+                totalSchoolVisits    += results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'][schoolId]['visits']  
+              end
+                            
+            }
+
+          if totalSchoolVisits > 0
+            schoolStatus = 'Supported'
+          end
+
+          #schools
+          aggregateData[zoneId]['schools'] ||= {} 
+          aggregateData[zoneId]['schools'][schoolId] ||= {}
+          aggregateData[zoneId]['schools'][schoolId]['name'] = school['name']
+          aggregateData[zoneId]['schools'][schoolId]['visits'] = totalSchoolVisits
+          aggregateData[zoneId]['schools'][schoolId]['status'] = schoolStatus
+
+        }
+    }
+
+    supportedZonesTable = "<table id='tree-table'>
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          #{result['visits']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+            zoneName = zone['name']
+            visits = zone['visits']
+            
+            totalVisits    = 0
+            status = 'Not Supported'
+
+            months.each{ | m |
+
+              if ! results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId].nil?
+                totalVisits    += results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['visits']  
+              end
+                            
+            }
+
+            if totalVisits > 0
+              status = 'Supported'
+            end
+
             "
-              <tr>
-               
-                <td>#{titleize(schoolName)}</td>
-                <td>#{totalGpsVisits}</td>
-                <td>#{totalVisits}</td>
+              <tr id='#{zoneId}'>
+                <td>#{titleize(zoneName)}</td>
+                <td>#{titleize(status)}</td>
               </tr>
+
             "}.join }
-              
+
         </tbody>
       </table>"
 
@@ -307,7 +359,7 @@ class Brockman < Sinatra::Base
       <br>
       "
 
-    userTab = "<h2>#{titleize(currentCountyName)} - #{titleize(currentZoneName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]} - #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][endMonth.to_i]})</h2>
+    userTab = "<h2>#{titleize(currentCountyName)} Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]} - #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][endMonth.to_i]})</h2>
       <hr>
       <label for='school-county-select'>County</label>
         <select id='school-county-select'>
@@ -317,18 +369,9 @@ class Brockman < Sinatra::Base
               "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
             }.join("")
           }
-        </select>&nbsp;
-        <label for='school-zone-select'>Zone</label>
-        <select id='school-zone-select'>
-          #{
-            orderedCounties = result['staff']['byCounty'][currentCountyId]['zones'].sort_by{ |zoneId, zone| zone['name'] }
-            orderedCounties.map{ | zoneId, zone |
-              "<option value='#{zoneId}' #{"selected" if zoneId == currentZoneId}>#{titleize(zone['name'])}</option>"
-            }.join("")
-          }
         </select>
       <br>
-      #{schoolsTable}"
+      #{supportedZonesTable}"
 
     html =  "<html>
       <head>
@@ -443,7 +486,7 @@ class Brockman < Sinatra::Base
           };
 
           $(document).ready( function() {
-             
+                       
               /***********
               **
               **   Init Custom Data Tables
@@ -457,8 +500,7 @@ class Brockman < Sinatra::Base
               });
 
               var currCounty = '#{countyId}';
-              var zone = '#{zoneId}';
-
+              
               $('#year-select,#month-select,#end-month-select').on('change',function() {
                 reloadReport();
               });
@@ -475,17 +517,65 @@ class Brockman < Sinatra::Base
                 reloadReport();
               });
 
-              $('#school-zone-select').on('change',function() {
-                  zone = $('#school-zone-select').val()
-                  reloadReport();
+              var zoneTable = $('#tree-table').dataTable( { 
+                iDisplayLength :-1, 
+                select: 'single',
+                sDom : 't'
+              });
+                         
+              //load child nodes
+              function getSchoolData(id){
+                var schoolData = new Array();
+
+                var zoneData = '#{aggregateData.to_json}';
+                var keyArray = Object.keys(zoneData);
+                schoolData
+                #{
+                  aggregateData.map{ | zoneId, zone |
+                  
+                    "schoolData.push('#{zoneId}');
+                    "
+                  }
+                }
+               
+                
+                return schoolData;
+              }
+
+              function loadSchools(nTr){
+                var selectedZone = nTr['id'];
+                //schools data for period
+                var schoolData = getSchoolData(selectedZone);
+
+                var schoolsTb = '<table>';
+                schoolsTb +=    '<tr><td>Schools</td><td>Status</td></tr>';
+
+                
+                schoolsTb +=    '</table>';
+
+                return schoolsTb;
+              }
+
+              // Add event listener for opening and closing details
+              zoneTable.$('td').click( function () {
+                var nTr = $(this).parents('tr')[0];
+                
+                //close row
+                if(zoneTable.fnIsOpen(nTr)){
+                  zoneTable.fnClose( nTr );
+                }
+                else{
+                   zoneTable.fnOpen( nTr, loadSchools(nTr), 'Schools' );
+                }
               });
 
+              //reload report
               function reloadReport(){
                 year    = $('#year-select').val().toLowerCase()
                 month   = $('#month-select').val().toLowerCase()
                 endMonth   = $('#end-month-select').val().toLowerCase()
-                console.log(currCounty, zone, year, month)
-                document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/staff/#{group}/'+year+'/'+month+'/'+endMonth+'/'+currCounty+'/'+zone+'.html';
+                //console.log(currCounty,  year, month)
+                document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/staff/#{group}/'+year+'/'+month+'/'+endMonth+'/'+currCounty+'.html';
               }
 
             /***********
@@ -602,7 +692,7 @@ class Brockman < Sinatra::Base
           <option #{"selected" if year == "2017"}>2017</option>
         </select>
 
-        <label for='month-select'>Month</label>
+        <label for='month-select'>From</label>
         <select id='month-select'>
           <option value='1'  #{"selected" if month == "1"}>Jan</option>
           <option value='2'  #{"selected" if month == "2"}>Feb</option>
@@ -618,7 +708,7 @@ class Brockman < Sinatra::Base
           <!--<option value='12' #{"selected" if month == "12"}>Dec</option>-->
         </select>
 
-        <label for='end-month-select'>Month</label>
+        <label for='end-month-select'>To</label>
         <select id='end-month-select'>
           <option value='1'  #{"selected" if endMonth == "1"}>Jan</option>
           <option value='2'  #{"selected" if endMonth == "2"}>Feb</option>
@@ -636,7 +726,7 @@ class Brockman < Sinatra::Base
 
           <div class='tab_container'>
             <div id='tab-tutor' class='tab first selected' data-id='tutor'>County</div>
-            <div id='tab-user' class='tab' data-id='user'>Schools</div>
+            <div id='tab-user' class='tab' data-id='user'>CSO</div>
             <section id='panel-tutor' class='tab-panel' style=''>
               #{countyTab}
             </section>
