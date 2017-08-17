@@ -274,9 +274,10 @@ class Brockman < Sinatra::Base
           end
 
         aggregateData[zoneId] ||= {}
-        aggregateData[zoneId]['zoneName'] = zoneName
-        aggregateData[zoneId]['status']   = status
-        aggregateData[zoneId]['visits']   = totalVisits
+        aggregateData[zoneId]['id'] = zoneId
+        #aggregateData[zoneId]['name'] = zoneName
+        #aggregateData[zoneId]['status']   = status
+        #aggregateData[zoneId]['visits']   = totalVisits
         
         #schools data
         totalSchoolVisits = 0
@@ -284,12 +285,12 @@ class Brockman < Sinatra::Base
         result['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'].map{ | schoolId, school |
           
         months.each{ | m |
-
-              if ! results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'][schoolId].nil?
-                totalSchoolVisits    += results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'][schoolId]['visits']  
-              end
+              
+          if ! results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'][schoolId].nil?
+            totalSchoolVisits    += results[m]['visits']['byCounty'][currentCountyId]['zones'][zoneId]['schools'][schoolId]['visits']  
+          end
                             
-            }
+        }
 
           if totalSchoolVisits > 0
             schoolStatus = 'Supported'
@@ -526,32 +527,51 @@ class Brockman < Sinatra::Base
               //load child nodes
               function getSchoolData(id){
                 var schoolData = new Array();
+               
+                var data = new Array();
 
-                var zoneData = '#{aggregateData.to_json}';
-                var keyArray = Object.keys(zoneData);
                 schoolData
                 #{
                   aggregateData.map{ | zoneId, zone |
-                  
-                    "schoolData.push('#{zoneId}');
-                    "
-                  }
+
+                    zone['schools'].map{ | schoolId, school |
+                      
+                      schoolName = school['name']
+                      status = school['status']
+                      visits = school['visits']
+
+                      "schoolData.push(['#{zoneId}','#{schoolName}','#{status}','#{visits}']);
+                      "
+                    }.join("")
+                  }.join("")
                 }
-               
-                
-                return schoolData;
+              
+                schoolData.forEach(function(el){
+
+                  if(el[0]==id){
+                    data.push([el[1],el[2], el[3]]);
+                  }
+                  
+                })
+                //console.log(data);
+                //console.log(schoolData);
+                return data;
               }
 
               function loadSchools(nTr){
                 var selectedZone = nTr['id'];
+                
                 //schools data for period
                 var schoolData = getSchoolData(selectedZone);
 
                 var schoolsTb = '<table>';
                 schoolsTb +=    '<tr><td>Schools</td><td>Status</td></tr>';
 
-                
-                schoolsTb +=    '</table>';
+                for(i=0;i<schoolData.length;i++){
+                  schoolsTb += '<tr><td>'+schoolData[i][0]+'</td><td>'+schoolData[i][1]+'</td></tr>';
+                }
+
+                schoolsTb +=  '</table>';
 
                 return schoolsTb;
               }
@@ -559,13 +579,13 @@ class Brockman < Sinatra::Base
               // Add event listener for opening and closing details
               zoneTable.$('td').click( function () {
                 var nTr = $(this).parents('tr')[0];
-                
+                var index = zoneTable.fnGetPosition( this );
                 //close row
                 if(zoneTable.fnIsOpen(nTr)){
                   zoneTable.fnClose( nTr );
                 }
                 else{
-                   zoneTable.fnOpen( nTr, loadSchools(nTr), 'Schools' );
+                   zoneTable.fnOpen( nTr, loadSchools(nTr, index[0]), 'Schools' );
                 }
               });
 
@@ -676,7 +696,6 @@ class Brockman < Sinatra::Base
 
           });
         
-
         </script>
 
       </head>
