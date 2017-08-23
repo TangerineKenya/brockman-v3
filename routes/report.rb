@@ -877,9 +877,10 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>County</th>
-            <th class='custSort'>Number of classroom visits <a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits - Moe <a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-            
+            <th class='custSort'>Number of classroom visits - Priede <a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
             
           </tr>
         </thead>
@@ -887,24 +888,24 @@ class Brockman < Sinatra::Base
           #{ result['visits']['byCounty'].map{ | countyId, county |
 
             countyName      = county['name']
-            visits          = county['esqac']['visits']
+            visits          = county['moe']['visits']
            
             priedeVisits    = county['priede']['visits']
-            quota           = county['esqac']['quota']
+            quota           = county['priede']['quota']
             sampleTotal     = 0
 
             "
               <tr>
                 <td>#{titleize(countyName)}</td>
                 <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-               
+               <td>#{priedeVisits} ( #{percentage( quota, priedeVisits )}% )</td>
                 
               </tr>
             "}.join }
             <tr>
               <td>All</td>
-              <td>#{result['visits']['esqac']['national']['visits']} ( #{percentage( result['visits']['esqac']['national']['quota'], result['visits']['esqac']['national']['visits'] )}% )</td>
-            
+              <td>#{result['visits']['moe']['national']['visits']} ( #{percentage( result['visits']['moe']['national']['quota'], result['visits']['moe']['national']['visits'] )}% )</td>
+              <td>#{result['visits']['priede']['national']['visits']} ( #{percentage( result['visits']['priede']['national']['quota'], result['visits']['priede']['national']['visits'] )}% )</td>
               
             </tr>
         </tbody>
@@ -924,9 +925,10 @@ class Brockman < Sinatra::Base
         <thead>
           <tr>
             <th>SubCounty</th>
-            <th class='custSort'>Number of classroom visits <a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <th class='custSort'>Number of classroom visits - Moe <a href='#footer-note-1'><sup>[1]</sup></a><br>
             <small>( Percentage of Target Visits)</small></th>
-           
+            <th class='custSort'>Number of classroom visits - Priede <a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
             
           </tr>
         </thead>
@@ -936,10 +938,10 @@ class Brockman < Sinatra::Base
             row += 1
 
             subCountyName = subCounty['name']
-            visits = subCounty['esqac']['visits']
+            visits = subCounty['moe']['visits']
             priedeVisits = subCounty['priede']['visits']
             
-            quota = subCounty['esqac']['quota']
+            quota = subCounty['moe']['quota']
             sampleTotal = 0
             
             # Do we still need this?
@@ -949,7 +951,7 @@ class Brockman < Sinatra::Base
             <tr> 
               <td>#{subCountyName}</td>
               <td>#{visits} ( #{percentage( quota, visits )}% )</td>
-              
+              <td>#{priedeVisits} ( #{percentage( quota, priedeVisits )}% )</td>
              
             </tr>
           "}.join }
