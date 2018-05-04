@@ -3,4 +3,5 @@
 .DS_Store
 
 config.rb
+settings.rb
 *.log

@@ -14,7 +14,7 @@ class Brockman < Sinatra::Base
   # Start of report
   #
 
-  get '/report/:group/:workflowIds/:year/:month/:county.:format?' do | group, workflowIds, year, month, county, format |
+  get '/report/:group/:year/:month/:county.:format?' do | group, year, month, county, format |
 
     format = "html" unless format == "json"
     
@@ -31,7 +31,7 @@ class Brockman < Sinatra::Base
       :db        => group
     })
 
-    subjectLegend = { "english_word" => "English", "word" => "Kiswahili", "operation"=>"Maths" } 
+    subjectLegend = { "english_word" => "English", "kiswahili_word" => "Kiswahili", "operation"=>"Maths" } 
 
     #
     # get Group settings
@@ -99,7 +99,7 @@ class Brockman < Sinatra::Base
         dates[TREND_MONTHS]       = { month:month, year:year};
         dates[TREND_MONTHS].link  = base+'reportData/#{group}/report-aggregate-year#{year.to_i}month#{month.to_i}.json';
         
-        var skipMonths = [-1,0,4,8,11,12];
+        var skipMonths = [-1,0,8,11,12];
         var skippedMonths = 0;
         // create links for trends by month
         for ( var i = TREND_MONTHS-1; i > 0; i-- ) {
@@ -1169,6 +1169,107 @@ class Brockman < Sinatra::Base
 
     "
 
+    sneCountyTableHtml = "
+      <table class='sne-table'>
+        <thead>
+          <tr>
+            <th>County</th>
+            <th class='custSort' align='left'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
+            <th class='custSort'>Maths - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th>
+              <th class='custSort'>Maths - Class 2<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th>
+          </tr>
+        </thead>
+        <tbody>
+        #{ result['visits']['sne']['byCounty'].map{ | countyId, county |
+
+            countyName      = county['name']
+            visits          = county['visits']
+            quota           = county['quota']
+            cl1sampleTotal = 0
+            cl2sampleTotal = 0
+           
+
+            "<tr>
+                <td>#{titleize(countyName)}</td>
+                <td>#{visits} ( #{percentage( quota, visits )}% )</td>
+                <td></span></td>
+                <td></span></td>
+            </tr>
+            "}.join}
+             <tr>
+              <td>All</td>
+              <td>#{result['visits']['sne']['national']['visits']}</td>
+              <td></td>
+              <td></td>
+            </tr>
+      </tbody>
+      </table>
+    "
+
+    sneZoneTableHtml = "
+      <label for='sne-county-select'>County</label>
+        <select id='sne-county-select'>
+          #{
+            orderedCounties = result['visits']['sne']['byCounty'].sort_by{ |countyId, county| county['name'] }
+            orderedCounties.map{ | countyId, county |
+              "<option value='#{countyId}' #{"selected" if countyId == currentCountyId}>#{titleize(county['name'])}</option>"
+            }.join("")
+          }
+        </select>
+      <table class='sne-table'>
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th class='custSort' align='left'>Number of classroom visits<a href='#footer-note-1'><sup>[1]</sup></a><br>
+            <small>( Percentage of Target Visits)</small></th>
+            <th class='custSort'>
+                Maths - Class 1<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th><th class='custSort'>
+                Maths - Class 2<br>
+                Correct per minute<a href='#footer-note-3'><sup>[3]</sup></a><br>
+                #{"<small>( Percentage at KNEC benchmark<a href='#footer-note-4'><sup>[4]</sup></a>)</small>"}
+              </th>
+          </tr>
+        </thead>
+        <tbody>
+          #{result['visits']['sne']['byCounty'][currentCountyId]['zones'].map{ | zoneId, zone |
+
+            row += 1
+
+            zoneName = zone['name']
+            visits = zone['visits']
+            
+          "
+            <tr> 
+              <td>#{zoneName}</td>
+              <td>#{visits}</td>
+              <td></td>
+              <td></td>
+              </tr>
+          "}.join }
+        </tbody>
+      </table>
+      <small>
+
+      <ol>
+        <li id='footer-note-1'><b>Numbers of classroom visits are</b> defined as TUSOME classroom observations that include all forms and all 3 pupils assessments, with at least 20 minutes duration, and took place between 7AM and 3.10PM of any calendar day during the selected month.</li>
+        <li id='footer-note-2'><b>Targeted number of classroom visits</b> is equivalent to the number of class 1 teachers in each zone.</li>
+        <li id='footer-note-3'><b>Correct per minute</b> is the calculated average out of all individual assessment results from all qualifying classroom visits in the selected month to date, divided by the total number of assessments conducted.</li>
+        <li id='footer-note-4'><b>Percentage at KNEC benchmark</b> is the percentage of those students that have met the KNEC benchmark for either class 1 or class 2, out of all of the students assessed for those subjects. The benchmarks are yet to be defined.</li>
+      </ol>
+      </small>
+
+    "
+
     #************************ Tab Definition ************************
     tutorTabContent = "
       
@@ -1256,6 +1357,23 @@ class Brockman < Sinatra::Base
       <div id='maths-map' style='height: 400px'></div>
       <br>
       <a id='maths-view-all-btn' class='btn' href='#'>View All County Data</a>
+      "
+
+    sneTabContent = "
+      <h2>Maths Report (#{year} #{["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month.to_i]})</h2>
+      <hr>
+      <h2>Counties</h2>
+      #{sneCountyTableHtml}
+      <br>
+      
+
+      <br>
+
+      <h2>
+        #{titleize(currentCountyName)} County Report
+      </h2>
+      #{sneZoneTableHtml}
+      
       "
 
     html =  "
@@ -1352,7 +1470,7 @@ class Brockman < Sinatra::Base
               layerControl: L.control.layers.provided(['OpenStreetMap.Mapnik','Stamen.Watercolor']),
               markers: L.markerClusterGroup(),
               layerGeoJsonFilter: function(feature, layer){
-                return (feature.role === 'tac-tutor' || feature.role === 'coach');
+                return (feature.role === 'cso' || feature.role === 'coach');
               }
             },
             maths: {
@@ -1446,6 +1564,12 @@ class Brockman < Sinatra::Base
               sDom : 't'
             });
               
+            //init display for the SNE Tab
+            $('table.sne-table').dataTable( { 
+              iDisplayLength :-1, 
+              sDom : 't'
+            });  
+
             /***********
             **
             **   Init Select Handlers
@@ -1476,11 +1600,16 @@ class Brockman < Sinatra::Base
               reloadReport();
             });
 
+            $('#sne-county-select').on('change',function() {
+              currCounty = $('#maths-county-select').val()
+              reloadReport();
+            });
+
             function reloadReport(){
               year    = $('#year-select').val().toLowerCase()
               month   = $('#month-select').val().toLowerCase()
 
-              document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/report/#{group}/#{workflowIds}/'+year+'/'+month+'/'+currCounty+'.html'+location.hash;
+              document.location = 'http://#{$settings[:host]}#{$settings[:basePath]}/report/#{group}/'+year+'/'+month+'/'+currCounty+'.html'+location.hash;
             }
 
             
@@ -1642,6 +1771,9 @@ class Brockman < Sinatra::Base
             //    layer.bindPopup( html );
             //  } // onEachFeature
             //}); // geoJson
+
+
+
           });
         </script>
 
@@ -1656,6 +1788,7 @@ class Brockman < Sinatra::Base
           <option #{"selected" if year == "2015"}>2015</option>
           <option #{"selected" if year == "2016"}>2016</option>
           <option #{"selected" if year == "2017"}>2017</option>
+          <option #{"selected" if year == "2018"}>2018</option>
         </select>
 
         <label for='month-select'>Month</label>
@@ -1678,7 +1811,8 @@ class Brockman < Sinatra::Base
           <div id='tab-tutor' class='tab first selected' data-id='tutor'>CSO</div>
           <div id='tab-scde' class='tab' data-id='scde'>SCDE</div>
           <div id='tab-esqac' class='tab' data-id='esqac'>ESQAC</div>
-          <div id='tab-maths' class='tab last' data-id='maths'>MATHS</div>
+          <div id='tab-maths' class='tab' data-id='maths'>MATHS</div>
+          <div id='tab-sne' class='tab last' data-id='sne'>SNE</div>
           <section id='panel-tutor' class='tab-panel' style=''>
             #{tutorTabContent}
           </section>
@@ -1690,6 +1824,9 @@ class Brockman < Sinatra::Base
           </section>
           <section id='panel-maths' class='tab-panel' style='display:none;'>
             #{mathTabContent}
+          </section>
+          <section id='panel-sne' class='tab-panel' style='display:none;'>
+            #{sneTabContent}
           </section>
         </div>
         

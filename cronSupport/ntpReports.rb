@@ -17,7 +17,7 @@ class NtpReports
 
     @locationList = nil
     @tripsSkipped = 0
-    @subjectLegend   = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
+    @subjectLegend   = { "english_word" => "English", "kiswahili_word" => "Kiswahili", "operation" => "Maths" } 
 
   end # of initialize
 
@@ -90,6 +90,16 @@ class NtpReports
     templates['result']['visits']['maths']['national']['numTeachers']   ||= 0
     templates['result']['visits']['maths']['national']['compensation']  ||= 0
     templates['result']['visits']['maths']['national']['fluency']       ||= {}
+
+    #SNE observations
+    templates['result']['visits']['sne']                              ||= {}
+    templates['result']['visits']['sne']['byCounty']                  ||= {}
+    templates['result']['visits']['sne']['national']                  ||= {}
+    templates['result']['visits']['sne']['national']['visits']        ||= 0
+    templates['result']['visits']['sne']['national']['quota']         ||= 0
+    templates['result']['visits']['sne']['national']['numTeachers']   ||= 0
+    templates['result']['visits']['sne']['national']['compensation']  ||= 0
+    templates['result']['visits']['sne']['national']['fluency']       ||= {}
 
     templates['result']['users']           ||= {}  #stores list of all users and zone associations
     templates['result']['users']['all']    ||= {}  #stores list of all users
@@ -175,6 +185,23 @@ class NtpReports
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1]       ||= {}
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2]       ||= {}
       templates['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3]       ||= {}
+
+      templates['result']['visits']['maths']['byCounty'][countyId]['quota']    = county['quota']
+
+      #sne
+      templates['result']['visits']['sne']['byCounty'][countyId]                              ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['name']                      ||= county['label']
+      templates['result']['visits']['sne']['byCounty'][countyId]['subCounties']               ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['zones']                     ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['visits']                    ||= 0
+      templates['result']['visits']['sne']['byCounty'][countyId]['quota']                     ||= 0
+      templates['result']['visits']['sne']['byCounty'][countyId]['numTeachers']               ||= 0
+      templates['result']['visits']['sne']['byCounty'][countyId]['compensation']              ||= 0
+      templates['result']['visits']['sne']['byCounty'][countyId]['fluency']                   ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['fluency']['class']          ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['fluency']['class'][1]       ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['fluency']['class'][2]       ||= {}
+      templates['result']['visits']['sne']['byCounty'][countyId]['fluency']['class'][3]       ||= {}
 
       templates['result']['visits']['maths']['byCounty'][countyId]['quota']    = county['quota']
 
@@ -266,6 +293,29 @@ class NtpReports
       
           templates['result']['visits']['maths']['byCounty'][countyId]['subCounties'][subCountyId]['zones'].push(zoneId)
 
+          #sne
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['trips']          ||= []
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['visits']         ||= 0
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['quota']          ||= 0
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['numTeachers']    ||= 0
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['compensation']   ||= 0
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['fluency']        ||= {}
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']          ||= {}
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]       ||= {}
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]       ||= {}
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]       ||= {}
+
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['quota']  += zone['quota'].to_i
+          templates['result']['visits']['sne']['national']['quota']                             += zone['quota'].to_i
+
+          templates['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['numTeachers']  += zone['numTeachers'].to_i
+          templates['result']['visits']['sne']['byCounty'][countyId]['numTeachers']                   += zone['numTeachers'].to_i
+          templates['result']['visits']['sne']['national']['numTeachers']                             += zone['numTeachers'].to_i
+      
+          #templates['result']['visits']['sne']['byCounty'][countyId]['subCounties'][subCountyId]['zones'].push(zoneId)
+
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]                   ||= {}
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['name']           ||= zone['label']
           # templates['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['trips']          ||= []
@@ -328,92 +378,143 @@ class NtpReports
 
   # Process users
   def processUsers(templates)
-    
-    userDocs = @couch.getRequest({
-      :doc => "_all_docs",
+    userDocs = @couch.postRequest({
+      :view => "users",
       :params => { 
-        "startkey" => "user-".to_json,
+        "reduce" => false,
         "include_docs" => true
       },
+      :data => {"keys" => ["user-profile"]},
       :parseJson => true
     })
 
-    puts "    #{userDocs['rows'].size} Total Users"
+    puts " #{userDocs['rows'].size} Total Users"
+    
     #associate users with their county and zone for future processing
     userDocs['rows'].map{ | user | 
-      unless user['doc']['location'].nil?
-        location = user['doc']['location']
+      unless user['value'].nil?
+        username                                          = user['value']['_id']
+        #check user has items
+        return err(true, "user #{username} has no values") if user['value']['items'].nil?
+        userDoc                                              = user['value']['items']
 
-        #duble each of these up to account for schema change over time - case-sensitive
-        county   = location['County'] if !location['County'].nil?
-        county   = location['county'] if !location['county'].nil?
-        zone     = location['Zone'] if !location['Zone'].nil?
-        zone     = location['zone'] if !location['zone'].nil?
+        templates['users']['all']                       ||= {}
+        #templates['users'][county]                      ||= {}
+        #templates['users'][county][zone]                ||= {}
+        #templates['users'][county][zone][username]        = true
 
-        subCounty = templates['locationByZone'][zone]['subCountyId'] if !templates['locationByZone'][zone].nil?
-        #tmpCounty = templates['locationByZone'][zone]['countyId'] if !templates['locationByZone'][zone].nil?
-        #puts "#{county}-#{tmpCounty}"
+        templates['users']['all'][username]                            ||= {}
+        #templates['users']['all'][username]['name']                      = ''
+        #templates['users']['all'][username]['role']                      = role
 
-        role = user['doc']['role'] || "tac-tutor"
+        templates['users']['all'][username]['target']                  ||= {}      # container for target zone visits
+        templates['users']['all'][username]['target']['visits']        ||= 0
+        templates['users']['all'][username]['target']['compensation']  ||= 0
 
-        #verify that the user has a zone and county associated
-        if !county.nil? && !zone.nil?
-          username                                          = user['doc']['name']
-          templates['users']['all']                       ||= {}
-          templates['users'][county]                      ||= {}
-          templates['users'][county][zone]                ||= {}
-          templates['users'][county][zone][username]        = true
+        templates['users']['all'][username]['other']                   ||= {}      # container for non-target zone visits
 
-          templates['users']['all'][username]                            ||= {}
-          templates['users']['all'][username]['data']                      = user['doc']
-          templates['users']['all'][username]['role']                      = role
+        templates['users']['all'][username]['total']                   ||= {}      # container for visit and compensation totals
+        templates['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
+        templates['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
+        templates['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
 
-          templates['users']['all'][username]['target']                  ||= {}      # container for target zone visits
-          templates['users']['all'][username]['target']['visits']        ||= 0
-          templates['users']['all'][username]['target']['compensation']  ||= 0
+        userDoc.map { | items |  
+           #puts "#{item['inputs']}"
+           unless items['inputs'].nil?
+              items['inputs'].map { |item|  
+                
+                templates['users']['all'][username]['data']                      = item
 
-          templates['users']['all'][username]['other']                   ||= {}      # container for non-target zone visits
+                return err(true, "user #{username} has no values") if item.nil?
+                role = 'cso'
+                 #get role values
+                if item['name'] == 'role'
+                   roles = item['value']
 
-          templates['users']['all'][username]['total']                   ||= {}      # container for visit and compensation totals
-          templates['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
-          templates['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
-          templates['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
+                   roles.map { | e |  
+                     if e['value'] == 'on'
+                       #puts "role #{e['name']}"
+                      role = e['name']
+                      templates['users']['all'][username]['role']                      = e['name']
+                     end
+                   }
+                end
+                first_name = ''
+                if item['name'] == 'first_name'
+                  first_name = item['value']
+                end
+                last_name = ''
+                if item['name'] == 'last_name'
+                  last_name = item['value']
+                end
+                templates['users']['all'][username]['name']                      = first_name+' '+last_name
 
-          #staff users
-          if role == 'rti-staff'
-            templates['result']['staff']['users'][username]                    ||= {}
-            #templates['result']['staff']['users'][username][county]            ||= {}
-            #templates['result']['staff']['users'][username][county][zone]      ||= {}
-            templates['result']['staff']['users'][username]['role']              = role
-            templates['result']['staff']['users'][username]['data']            ||= user['doc']
-          end
-          
-          # only do this if there is a valid subcounty taht currently exists
-          if !subCounty.nil?
+                #puts "Names: #{templates['users']['all'][username]['name']}"
 
-            if role == "scde"
-              
-              templates['result']['visits']['scde']['national']['quota']                                   += 8
-              templates['result']['visits']['byCounty'][county]['scde']['quota']                           += 8
-              templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['scde']['quota'] += 8
+                #get location values
+                county = ''
+                subCounty = ''
+                zone = ''
 
-            elsif role == "esqac"
+                if item['name'] == 'location'
+                  locations = item['value']
+                  locations.map { | location |  
+                    if location['level'] == 'county'
+                      county = location['value']
+                    end
+                    if location['level'] == 'subcounty'
+                      subCounty = location['value']
+                    end
+                    if location['level'] == 'zone'
+                      zone = location['value']
+                    end
+                  }
+                end
 
-              templates['result']['visits']['esqac']['national']['quota']                                   += 10
-              templates['result']['visits']['byCounty'][county]['esqac']['quota']                           += 10
-              templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['esqac']['quota'] += 10
+                if !county.nil? && !zone.nil?
+                  templates['users'][county]                      ||= {}
+                  templates['users'][county][zone]                ||= {}
+                  templates['users'][county][zone][username]        = true
+                end 
 
-              templates['result']['visits']['priede']['national']['quota']                                   += 10
-              templates['result']['visits']['byCounty'][county]['priede']['quota']                           += 10
-              templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['priede']['quota'] += 10
+                #staff users
+                if role == 'rti-staff'
+                  templates['result']['staff']['users'][username]                    ||= {}
+                  #templates['result']['staff']['users'][username][county]            ||= {}
+                  #templates['result']['staff']['users'][username][county][zone]      ||= {}
+                  templates['result']['staff']['users'][username]['role']              = role
+                  templates['result']['staff']['users'][username]['data']            ||= item
+                end
+                
+                # only do this if there is a valid subcounty taht currently exists
+                if !subCounty.nil?
 
-              templates['result']['visits']['moe']['national']['quota']                                   += 10
-              templates['result']['visits']['byCounty'][county]['moe']['quota']                           += 10
-              templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['moe']['quota'] += 10
+                  if role == "scde"
+                    
+                    templates['result']['visits']['scde']['national']['quota']                                   += 8
+                    templates['result']['visits']['byCounty'][county]['scde']['quota']                           += 8
+                    templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['scde']['quota'] += 8
 
-            end
-          end
-        end
+                  elsif role == "esqac"
+
+                    templates['result']['visits']['esqac']['national']['quota']                                   += 10
+                    templates['result']['visits']['byCounty'][county]['esqac']['quota']                           += 10
+                    #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['esqac']['quota'] += 10
+
+                    templates['result']['visits']['priede']['national']['quota']                                   += 10
+                    templates['result']['visits']['byCounty'][county]['priede']['quota']                           += 10
+                    #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['priede']['quota'] += 10
+
+                    templates['result']['visits']['moe']['national']['quota']                                   += 10
+                    templates['result']['visits']['byCounty'][county]['moe']['quota']                           += 10
+                    #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['moe']['quota'] += 10
+
+                  end
+                end
+              }
+           end
+        }
+        #return err(true, "user #{username} has no values") if userDoc['inputs'].nil?        
       end
     }
 
@@ -427,56 +528,123 @@ class NtpReports
 #
   # Process an individual trip
   def processTrip(trip, monthData, templates, workflows)
-    #puts "Processing Trip"  
+    puts "Processing Trip"  
+    workflowId = trip['value']['form']['id']    
+    username   = ''
+    schoolId   = ''
+    grade      = ''
+    subject    = ''
+    gpsData    = {}
+    #set value for gpsData
+    gpsData['type']                      = 'Feature'
+    gpsData['properties']              ||= []
+    gpsData['geometry']                ||= {}
+    gpsData['geometry']['type']          = 'Point'
+    gpsData['geometry']['coordinates'] ||= []
 
-    workflowId = trip['value']['workflowId'] || trip['id']
-    username   = trip['value']['user']       || ""
+    if !trip['value']['items'].nil?
+      #puts "workflow #{trip['value']['items']}"
+      results = trip['value']['items']
+      #loop on result items
+      results.map { | items |   
+        if !items['inputs'].nil?
+          items['inputs'].map { |item|  
+            
+            if item['name'] == 'userProfileId'
+              username   = item['value']  || ""
+            end
 
-    # handle case of irrelevant workflow 
-    return err(true, "Incomplete or Invalid Workflow: #{workflowId}") if not workflows[workflowId]
-    return err(true, "Workflow does not get pre-processed: #{workflowId}") if not workflows[workflowId]['reporting']['preProcess']
+            if item['name'] == 'location'
+              locations = item['value']
+              locations.map { | location |  
+                if location['level'] == 'school'
+                  schoolId = location['value'] || ""
+                end
+              }
+            end
+            #get subject
+            if item['name'] == 'subject'
+              subjects = item['value'] || ""
+              subjects.map { | e |  
+                #puts "Subject: #{e['name']}"
+                #if location['level'] == 'school'
+                #  schoolId = location['value'] || ""
+                #end
+                subject = e['name']
+              }
+            end
+            #get class / grade
+            if item['name'] == 'class' or item['name'] == 'grade'
+              grades = item['value'] || ""
+              grades.map { | e |  
+                #puts "Grade: #{e['name']}"
+                #if location['level'] == 'school'
+                #  schoolId = location['value'] || ""
+                #end
+                grade = e['name'] 
+              }
+            end
+            if item['name'] == 'gps-coordinates'
+              #puts "#{item['value']['longitude']}, #{item['value']['latitude']}"
+              gpsData['geometry']['coordinates'] = [item['value']['longitude'], item['value']['latitude']]
+            end
+          }          
+        end
+      }
+    end
+
+    #check for completeness
+    return err(true, "Incomplete trip") if trip['value']['form']['complete'] != true
 
     # validate user and role-workflow assocaition
     return err(true, "User does not exist: #{username}") if not templates['users']['all'][username]
     userRole = templates['users']['all'][username]['role']
-    return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['reporting']['targetRoles']}") if not workflows[workflowId]['reporting']['targetRoles'].include? userRole
+    #users full names
+    user = templates['users']['all'][username]['name'] 
+
+    return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['targetRoles']}") if not workflows[workflowId]['targetRoles'].include? userRole
 
     # validate against the workflow constraints
-    validated = validateTrip(trip, workflows[workflowId])
-    return err(true, "Trip did not validate against workflow constraints") if not validated
+    # validated = validateTrip(trip, workflows[workflowId])
+    # return err(true, "Trip did not validate against workflow constraints") if not validated
 
-    # verify school
-    return err(true, "School was not found in trip") if trip['value']['school'].nil?
-          
-    schoolId      = trip['value']['school']
     return err(true, "School was not found in database") if templates['locationBySchool'][schoolId].nil?
 
-    
     zoneId        = templates['locationBySchool'][schoolId]['zoneId']        || ""
     subCountyId   = templates['locationBySchool'][schoolId]['subCountyId']   || ""
     countyId      = templates['locationBySchool'][schoolId]['countyId']      || ""
-    username      = trip['value']['user'].downcase
+    
+
+    #return correct items for each trip
+    itemsPerMinute = correctItemsPerMinute(trip)
+
+    #puts "ipm: #{itemsPerMinute}"
 
     #
     # Handle Role-specific calculations
     #
-    if userRole == "tac-tutor" or userRole == "coach" or userRole == "CSO"
 
+    if workflowId == "tusome-classroom-observation-tool-for-sne"
+          monthData['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['_id']
+          monthData['result']['visits']['sne']['national']['visits']                                += 1
+          monthData['result']['visits']['sne']['byCounty'][countyId]['visits']                      += 1 
+          monthData['result']['visits']['sne']['byCounty'][countyId]['zones'][zoneId]['visits']     += 1
+    end 
+
+    if userRole == "coach" or userRole == "cso"
+      
       #skip these steps if either the county or zone are no longer in the primary list 
       return err(false, "Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
       return err(false, "Missing Zones")  if monthData['result']['visits']['byCounty'][countyId]['zones'].nil?
       return err(false, "Missing Zone")   if monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId].nil?
       return err(false, "Missing Visits") if monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits'].nil?
 
-      monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
+      monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['_id']
 
-      return err(true, "Subject was not found in database") if trip['value']['subject'].nil?
-      return err(true, "Class was not found in database") if trip['value']['class'].nil?
-      #puts "trip user: #{username} - in result #{result['users']['all'][username].nil?}"
-      #return if monthData['result']['users']['all'][username].nil?
-      #if !trip['value']['subject'].nil? and  trip['value']['subject'] != ""and !trip['value']['class'].nil? and trip['value']['class'] != ""
-        #ensure that the user exists in the db and in the result-set
-        if monthData['result']['users']['all'][username].nil?
+      return err(true, "Subject was not found in database") if subject.nil?
+      return err(true, "Class was not found in database") if grade.nil?
+
+      if monthData['result']['users']['all'][username].nil?
           monthData['result']['users']['all'][username]                            ||= {}
           monthData['result']['users']['all'][username]['data']                    ||= {}
 
@@ -490,12 +658,12 @@ class NtpReports
           monthData['result']['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
           monthData['result']['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
           monthData['result']['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
-        end
+      end
 
-        if !monthData['result']['users'][countyId][zoneId][username].nil?
+      if !monthData['result']['users'][countyId][zoneId][username].nil?
           monthData['result']['users']['all'][username]['target']['visits']  += 1
 
-        else
+      else
           monthData['result']['users']['all'][username]['other'][countyId]                           ||= {}
           monthData['result']['users']['all'][username]['other'][countyId][zoneId]                   ||= {}
           monthData['result']['users']['all'][username]['other'][countyId][zoneId]['visits']         ||= 0
@@ -503,283 +671,88 @@ class NtpReports
 
           monthData['result']['users']['all'][username]['flagged']                                     = true
           monthData['result']['users']['all'][username]['other'][countyId][zoneId]['visits']          += 1
-        end
+      end
 
-        monthData['result']['users']['all'][username]['total']['visits']                              += 1
+      monthData['result']['users']['all'][username]['total']['visits']                              += 1
 
-        #monthData['result']['visits']['national']['visits']                                           += 1
-        #monthData['result']['visits']['byCounty'][countyId]['visits']                                 += 1 
-        #monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']                += 1
-        
-        #check workflowid=maths observations
-        if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
-          monthData['result']['visits']['maths']['national']['visits']                                += 1
-          monthData['result']['visits']['maths']['byCounty'][countyId]['visits']                      += 1 
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['visits']     += 1
+      #process each workflow 
+      if workflowId == "maths-teachers-observation-tool" or workflowId == "maths-grade3" #priede data
+        monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['_id']
+        monthData['result']['visits']['maths']['national']['visits']                                += 1
+        monthData['result']['visits']['maths']['byCounty'][countyId]['visits']                      += 1 
+        monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['visits']     += 1
           
-          #
-          # Process geoJSON data for mapping
-          #
-          if !trip['value']['gpsData'].nil?
-            point = trip['value']['gpsData']
+        #
+        # Process geoJSON data for mapping
+        #
+        if !gpsData.nil?
+            point = gpsData
 
             if !@timezone.nil?
-              startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+              startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000).getlocal(@timezone)
             else 
-              startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+              startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000)
             end
 
             point['role'] = "maths"
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-              { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-              { 'label' => 'Class',           'value' => trip['value']['class'] },
+              { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
+              { 'label' => 'Class',           'value' => 1 },
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-              { 'label' => 'CSO',             'value' => titleize(trip['value']['user'].downcase) },
-              { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-              { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+              { 'label' => 'CSO',             'value' => titleize(user.downcase) },
+              { 'label' => 'Lesson Week',     'value' => '' },
+              { 'label' => 'Lesson Day',      'value' => '' }
             ]
-
+            
             monthData['geoJSON']['byCounty'][countyId]['data'].push point
-          end
-
-        elsif workflowId=="c835fc38-de99-d064-59d3-e772ccefcf7d" or workflowId=="27469912-1fa9-cac1-6810-b4e962a82b42"
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['id']
-          monthData['result']['visits']['national']['visits']                                         += 1
-          monthData['result']['visits']['byCounty'][countyId]['visits']                               += 1 
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
+        end
+      elsif workflowId == "class-12-lesson-observation-with-pupil-books" or workflowId == "Gradethreeobservationtool" #tusome data
+        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['trips'].push trip['_id']
+        monthData['result']['visits']['national']['visits']                                         += 1
+        monthData['result']['visits']['byCounty'][countyId]['visits']                               += 1 
+        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['visits']              += 1
           
-          #school visits
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits']   += 1
+        #school visits
+        monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['schools'][schoolId]['visits']   += 1
 
-          #
-          # Process geoJSON data for mapping
-          #
-          if !trip['value']['gpsData'].nil?
-            point = trip['value']['gpsData']
+        #
+        # Process geoJSON data for mapping
+        # 
+        if !gpsData.nil?
+            point = gpsData
 
             if !@timezone.nil?
-              startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+              startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000).getlocal(@timezone)
             else 
-              startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+              startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000)
             end
 
             point['role'] = userRole
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-              { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-              { 'label' => 'Class',           'value' => trip['value']['class'] },
+              { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
+              { 'label' => 'Class',           'value' => 1 },
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-              { 'label' => 'CSO',       'value' => titleize(trip['value']['user'].downcase) },
-              { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-              { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+              { 'label' => 'CSO',             'value' => titleize(user.downcase) },
+              { 'label' => 'Lesson Week',     'value' => '' },
+              { 'label' => 'Lesson Day',      'value' => '' }
             ]
-
+            #puts "Gps: #{point}"
+            #puts "Grade: #{grade}"
             monthData['geoJSON']['byCounty'][countyId]['data'].push point
           end
-
-        end
-      #end
-  
-      #
-      # process fluency data
-      #
-      if !trip['value']['itemsPerMinute'].nil? and
-         !trip['value']['subject'].nil? and
-         trip['value']['subject'] != ""and
-         !trip['value']['class'].nil? and
-         trip['value']['class'] != ""
-        
-        #puts "Subject #{subject}"
-        #pushUniq reportSettings['fluency']['subjects'], subject, subjectsExists
-
-        #check for maths workflow
-        if workflowId=="62fd1403-193f-20be-7662-5589ffcfadee"
-          itemsPerMinute = trip['value']['itemsPerMinute']
-          benchmarked    = trip['value']['benchmarked']
-          met            = trip['value']['metBenchmark']
-
-          subject = trip['value']['subject']
-
-          total = 0
-          itemsPerMinute.each { | ipm | 
-            if !ipm.nil? 
-              total += ipm 
-            end
-          }
-
-          obsClass = trip['value']['class'].to_i
-
-          if !@reportSettings['fluency']['subjects'].include?(subject)
-            @reportSettings['fluency']['subjects'].push subject
-          end
-
-          monthData['result']['visits']['maths']['national']['fluency']['class']                              ||= {}
-          monthData['result']['visits']['maths']['national']['fluency']['class'][1]                           ||= {}
-          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]                  ||= {}
-          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['sum']           ||= 0
-          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['size']          ||= 0
-          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-          
-          monthData['result']['visits']['maths']['national']['fluency']['class'][2]                           ||= {}
-          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]                  ||= {}
-          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['sum']           ||= 0
-          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['size']          ||= 0
-          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['sum']           += total
-          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
-          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
-
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class']                              ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-          
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
-          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
-
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-          
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
-          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
-
-        elsif workflowId=="c835fc38-de99-d064-59d3-e772ccefcf7d" or workflowId=="27469912-1fa9-cac1-6810-b4e962a82b42"
-          
-          itemsPerMinute = trip['value']['itemsPerMinute']
-          benchmarked    = trip['value']['benchmarked']
-          met            = trip['value']['metBenchmark']
-
-          subject = trip['value']['subject']
-
-          #check that class 3 subject data is handled in the same way as class 1 & 2
-          if subject == "english"
-            subject = "english_word"
-          elsif subject == "kiswahili"
-            subject = "word"
-          else
-            subject = trip['value']['subject']
-          end
-
-          total = 0
-          itemsPerMinute.each { | ipm | 
-            if !ipm.nil? 
-              total += ipm 
-            end
-          }
-
-          obsClass = trip['value']['class'].to_i
-
-          if !@reportSettings['fluency']['subjects'].include?(subject)
-            @reportSettings['fluency']['subjects'].push subject
-          end
-          
-          monthData['result']['visits']['national']['fluency']['class']                              ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][1][subject]['sum']           ||= 0
-          monthData['result']['visits']['national']['fluency']['class'][1][subject]['size']          ||= 0
-          monthData['result']['visits']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-          
-          monthData['result']['visits']['national']['fluency']['class'][2]                           ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][2][subject]                  ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][2][subject]['sum']           ||= 0
-          monthData['result']['visits']['national']['fluency']['class'][2][subject]['size']          ||= 0
-          monthData['result']['visits']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['national']['fluency']['class'][3]                           ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][3][subject]                  ||= {}
-          monthData['result']['visits']['national']['fluency']['class'][3][subject]['sum']           ||= 0
-          monthData['result']['visits']['national']['fluency']['class'][3][subject]['size']          ||= 0
-          monthData['result']['visits']['national']['fluency']['class'][3][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['sum']           += total
-          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
-          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
-
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class']                              ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-          
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3]                           ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]                  ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['sum']           ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['size']          ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
-          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
-
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
-          
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]                           ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]                  ||= {}
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['sum']           ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['size']          ||= 0
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
-
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
-          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
-
-        end
-
       end
 
-
     elsif userRole == "scde"
-
       return err(false, "SCDE: Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
       return err(true, "SCDE: Missing Sub County")  if monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId].nil?
 
-      monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['trips'].push trip['id']
+      monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['scde']['trips'].push trip['_id']
       
       monthData['result']['visits']['scde']['national']['visits']                                       += 1
       monthData['result']['visits']['byCounty'][countyId]['scde']['visits']                             += 1
@@ -788,13 +761,13 @@ class NtpReports
       #
       # Process geoJSON data for mapping
       #
-      if !trip['value']['gpsData'].nil?
-        point = trip['value']['gpsData']
+      if !gpsData.nil?
+        point = gpsData
 
         if !@timezone.nil?
-          startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+          startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000).getlocal(@timezone)
         else 
-          startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+          startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000)
         end
 
         point['role'] = userRole
@@ -803,38 +776,28 @@ class NtpReports
           { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
           { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
           { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-          { 'label' => 'SCDE',            'value' => titleize(trip['value']['user'].downcase) }
+          { 'label' => 'SCDE',            'value' => titleize(user.downcase) }
         ]
 
         monthData['geoJSON']['byCounty'][countyId]['data'].push point
       end
 
-    elsif userRole == "esqac" or userRole == "ESQAC"
-      puts "** processing ESQAC Trip"
-
-      #skip these steps if either the county or zone are no longer in the primary list 
+    elsif userRole == "esqac"
       return err(false, "ESQAC: Missing County") if monthData['result']['visits']['byCounty'][countyId].nil?
       return err(true, "ESQAC: Missing Sub County")  if monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId].nil?
-      #return err(true, "ESQAC: Missing Zone")   if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId].nil?
-      #return err(true, "ESQAC: Missing Visits") if monthData['result']['visits']['esqac']['byCounty'][countyId]['zones'][zoneId]['visits'].nil?
 
-      #check for the differentiator flags
-      #1.Tusome/Priede Flag
-      #2. Subject
-
-
-      if !trip['value']['subject'].nil? and !trip['value']['class'].nil?
+      if !subject.nil? and !grade.nil?
         #priede or tusome
-        if trip['value']['subject'] == "operation"
+        if subject == "operation"
           #priede
-          monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['priede']['trips'].push trip['id']
+          monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['priede']['trips'].push trip['_id']
       
           monthData['result']['visits']['priede']['national']['visits']                                       += 1
           monthData['result']['visits']['byCounty'][countyId]['priede']['visits']                             += 1
           monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['priede']['visits'] += 1
         else
           #tusome
-          monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['trips'].push trip['id']
+          monthData['result']['visits']['byCounty'][countyId]['subCounties'][subCountyId]['esqac']['trips'].push trip['_id']
       
           monthData['result']['visits']['esqac']['national']['visits']                                       += 1
           monthData['result']['visits']['byCounty'][countyId]['esqac']['visits']                             += 1
@@ -842,31 +805,29 @@ class NtpReports
         end
       end
 
-      
-      
       #
       # Process geoJSON data for mapping
       #
-      if !trip['value']['gpsData'].nil?
-        point = trip['value']['gpsData']
+      if !gpsData.nil?
+        point = gpsData
 
         if !@timezone.nil?
-          startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
+          startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000).getlocal(@timezone)
         else 
-          startDate = Time.at(trip['value']['minTime'].to_i / 1000)
+          startDate = Time.at(trip['value']['startUnixtime'].to_i / 1000)
         end
 
         point['role'] = userRole
         point['properties'] = [
           { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
-          { 'label' => 'Subject',         'value' => @subjectLegend[trip['value']['subject']] },
-          { 'label' => 'Class',           'value' => trip['value']['class'] },
+          { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
+          { 'label' => 'Class',           'value' => grade },
           { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
           { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
           { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
-          { 'label' => 'ESQAC',           'value' => titleize(trip['value']['user'].downcase) },
-          { 'label' => 'Lesson Week',     'value' => trip['value']['week'] },
-          { 'label' => 'Lesson Day',      'value' => trip['value']['day'] }
+          { 'label' => 'ESQAC',           'value' => titleize(user.downcase) },
+          { 'label' => 'Lesson Week',     'value' => '' },
+          { 'label' => 'Lesson Day',      'value' => ''}
         ]
 
         monthData['geoJSON']['byCounty'][countyId]['data'].push point
@@ -890,12 +851,12 @@ class NtpReports
 
     # handle case of irrelevant workflow 
     return err(true, "Incomplete or Invalid Workflow: #{workflowId}") if not workflows[workflowId]
-    return err(true, "Workflow does not get pre-processed: #{workflowId}") if not workflows[workflowId]['reporting']['preProcess']
+    return err(true, "Workflow does not get pre-processed: #{workflowId}") if not workflows[workflowId]
 
     # validate user and role-workflow assocaition
     return err(true, "User does not exist: #{username}") if not templates['users']['all'][username]
     userRole = templates['users']['all'][username]['role']
-    return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['reporting']['targetRoles']}") if not workflows[workflowId]['reporting']['targetRoles'].include? userRole
+    return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['targetRoles']}") if not workflows[workflowId]['targetRoles'].include? userRole
 
     # validate against the workflow constraints
     validated = validateTrip(trip, workflows[workflowId])
@@ -1069,16 +1030,82 @@ class NtpReports
 
   end
 
-#
-#
-#  Validate the trip results against the constraints stored in the workflow 
-#
-#
+  #
+  # Compute correct Items per Minute For Each grid test that is filled
+  #
+
+  def itemsPerMinute(item)
+    correctItems   = 0
+    itemsPerMinute = 0
+
+    if !item['value'].nil?
+      #check that grid test has been completed
+      #if item['incomplete'] == false
+        #get total items
+        totalItems = item['value'].length
+
+        totalTime = item['duration']
+        timeLeft  = item['timeRemaining']
+          
+        item['value'].map { | e |  
+          if e['pressed'] == false
+            correctItems  += 1
+          end
+        }
+
+        #startTime = Time.at(item['startTime'].to_i / 1000).getlocal(@timezone)
+        #endTime   = Time.at(item['endTime'].to_i / 1000).getlocal(@timezone)
+
+        #duration = TimeDifference.between(startTime, endTime).in_seconds
+        if ((totalTime - timeLeft) / totalTime)  > 0
+          itemsPerMinute = (totalItems - (totalItems - correctItems)) / ((totalTime - timeLeft) / totalTime)  
+          #puts "ci: #{itemsPerMinute}" 
+          #puts "-----" 
+        end
+      #end
+    end
+    
+    return itemsPerMinute
+  end
+
+  #
+  # Compute correct Items per Minute For Each Trip
+  #
+
+  def correctItemsPerMinute(trip)
+    
+    results = trip['value']['items']
+    totalItemsPerMinute = 0
+
+    #
+    #Get grid tests only from the trip values
+    #
+
+    results.map { | items |
+      items['inputs'].map { |item|  
+        if item['mode'] == 'TANGY_TIMED_MODE_DISABLED'
+          #ipm = itemsPerMinute(item)
+          totalItemsPerMinute += itemsPerMinute(item)
+          puts "cipm: #{ipm} Total: #{totalItemsPerMinute}"
+        end
+      }
+    }
+    #averageScore =  totalItemsPerminute / 3
+     
+    #puts "-----"
+    return totalItemsPerMinute
+  end
+
+  #
+  #
+  #  Validate the trip results against the constraints stored in the workflow 
+  #
+  #
   def validateTrip(trip, workflow)
     # return valid if validation not enabled for trip
-    return true if not workflow['observationValidation']
-    return true if not workflow['observationValidation']['enabled']
-    return true if not workflow['observationValidation']['constraints']
+    return true if not workflow
+    return true if not workflow['enabled']
+    return true if not workflow['constraints']
 
     #assume incomplete if there is no min and max time defined
     return false if not trip['value']['minTime']
@@ -1092,7 +1119,7 @@ class NtpReports
       endDate   = Time.at(trip['value']['maxTime'].to_i / 1000)
     end
 
-    workflow['observationValidation']['constraints'].each { | type, constraint |
+    workflow['constraints'].each { | type, constraint |
       if type == "timeOfDay"
         startRange = constraint['startTime']['hour']
         endRange   = constraint['endTime']['hour']

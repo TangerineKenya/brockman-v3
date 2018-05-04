@@ -36,7 +36,7 @@ END
 puts header
 
 groups = []
-groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2017, 'endYear' => 2017 })
+groups.push({ 'db' => 'tusome-v3-prod', 'helper' => NtpReports, 'startYear' => 2018, 'endYear' => 2018 })
 
 
 #
@@ -93,102 +93,22 @@ groups.each { |group|
     helper = group["helper"].new(:couch => couch, :timezone => groupTimeZone, :reportSettings => reportSettings)
   end
 
-
   #
   #  Identify Workflows to Process
   #
 
-  puts "\n- Retrieving Workflows: "
-  taskStart = Time.now()
-
-  workflowsRequest = couch.postRequest({
-    :view => "byCollection",
-    :params => { 
-      "reduce" => false,
-      "include_docs" => true
-    },
-    :data => {"keys" => ["workflow"]},
-    :parseJson => true
-  })
-
-
   workflows = {}
-
-  workflowsRequest['rows'].each{ |e| 
-    workflows[e['doc']['_id']] = e['doc']
-  }
-  puts "    #{workflows.length} Workflows Retrieved - (#{time_diff(Time.now(), taskStart)})"
-
   workflowIds = []
 
-  workflows.each{ |workflowId, workflow|
-    if workflow['reporting'].nil?
-      next
-    end
-
-    if not workflow['reporting']['preProcess']
-      next
-    end
-    workflowIds.push workflowId
+  groupSettings['workflows'].map{ |e| 
+    workflows[e['id']] = e
+    workflowIds.push e['id']
   }
+  #puts "Workflow #{workflows}"
+  #puts "    #{workflows.length} Workflows Retrieved - (#{time_diff(Time.now(), taskStart)})"
 
-  #puts "\n- Caching Workflow Trips:"
-  #taskStart = Time.now()
-
-  # workflowIds = []
-  # workflows.each { |workflow|
-  #   workflowId   = workflow['_id'] || ""
-  #   workflowName = workflow['name'] || ""
-  #   puts "\n    Workflow -> #{workflowName}"
-  #   puts "      Id: #{workflowId}"
-  #   subTaskStart = Time.now()
-
-  #   if not workflow['reporting']['preProcess']
-  #     puts "      [SKIP] Pre-Processing Disabled - (#{time_diff(Time.now(), subTaskStart)})"
-  #     next
-  #   end
-
-    # add workflow ID to the list of those processed
-  #  workflowIds.push workflowId
-
-  #   tripsRequest = JSON.parse(couch.postRequest({
-  #     :view => "tutorTrips",
-  #     :params => {"reduce" => false},
-  #     :data => {"keys" => ["workflow-#{workflowId}"]}
-  #   }))
-  #   hTripIds = {}
-  #   tripsRequest['rows'].each { |row| hTripIds[row['value']] = true }
-  #   aTripIds      = hTripIds.keys
-  #   totalTripIds  = aTripIds.length
-    
-  #   puts "      # Trips: #{totalTripIds}"
-  #   print "      "
-
-  #   (0..totalTripIds).step(CHUNK_SIZE).each { | chunkIndex |
-  #     idChunk = aTripIds.slice(chunkIndex, chunkIndex + CHUNK_SIZE)
-  #     couch.postRequest({
-  #       :view   => "spirtRotut",
-  #       :params => { "group" => true },
-  #       :cache  => true,
-  #       :data   => { "keys" => idChunk }
-  #     })
-  #     print "*"
-  #   }
-    
-  #   puts "\n      [COMPLETE] Workflow Processed - (#{time_diff(Time.now(), subTaskStart)})"
-  # }
-  
-  puts "\n   [COMPLETE] Caching Workflow Trips - (#{time_diff(Time.now(), taskStart)})"
-
-#
-#
-# => BEGIN Pre-processing data for reports
-#
-#
-
- 
-
-
+  #find a way to pull this data from couchdb - probal store in the settings file?
+  #workflowIds = ['Gradethreeobservationtool','class-12-lesson-observation-with-pupil-books','maths-teachers-observation-tool','maths-grade3','tusome-classroom-observation-tool-for-sne']
 
   #
   # Process locations and setup data structure
@@ -207,7 +127,6 @@ groups.each { |group|
 
   puts "   [COMPLETE] Processing Schools  - (#{time_diff(Time.now(), taskStart)})"
 
-
   #
   # Retrieve and Filter All Users
   #
@@ -218,21 +137,18 @@ groups.each { |group|
   
   puts "   [COMPLETE] Processing Users - (#{time_diff(Time.now(), taskStart)})"
 
-
   #
   # Processing Trips By Month
   #
-  
+
   puts "\n- Processing Tutor Trips By Month"
   taskStart = Time.now()
 
 
-
-
   (group["startYear"]..group["endYear"]).each { |year| 
-    (1..12).each { |month|
-    #(1..10).each { |month|
-    
+    #(1..12).each { |month|
+    (4..5).each { |month|
+
       helper.resetSkippedCount() if helper
 
       puts "  * #{month}/#{year}"
@@ -279,11 +195,11 @@ groups.each { |group|
       }
 
       workflowIds.each{ |workflowId|
-        puts "    Workflow - #{workflowId}"
-        monthKeys = ["year#{year}month#{month}workflowId#{workflowId}"]
+        puts "   Processing Workflow - #{workflowId}"
+        monthKeys = ["year#{year}month#{month}formId#{workflowId}"]
         
         tripsFromMonth = couch.postRequest({ 
-          :view   => "tutorTrips", 
+          :view   => "completedTripsByYearAndMonth", 
           :data   => { "keys"   => monthKeys }, 
           :params => { "reduce" => false }, 
           :categoryCache => true,
@@ -297,7 +213,7 @@ groups.each { |group|
 
         puts "      # Trips: #{tripKeys.size}"
 
-        # break trip keys into chunks
+         # break trip keys into chunks
         tripKeyChunks = tripKeys.each_slice(CHUNK_SIZE).to_a
 
         # hash for optimization
@@ -306,38 +222,18 @@ groups.each { |group|
           'all' => {}
         }
 
-        #
-        # Get chunks of trips and work on the result
-        #
-
-        #print "      Filtering Valid Visits... "
-        tripKeyChunks.each { | tripKeys |
-
-          # get the real data
-          tripsResponse = couch.postRequest({
-            :view => "spirtRotut",
-            :params => { "group" => true },
-            :data => { "keys" => tripKeys },
-            :parseJson => true,
-            :cache => true
-          } )
-          tripRows = tripsResponse['rows']
-
-          #puts "Processing Chunk:  #{tripRows.length}"
-
-          # Process each Trip result record in chunk
-          for trip in tripRows
-            helper.processTrip(trip, monthData, templates, workflows) if helper
-
-            #staff trips
-            helper.processStaffTrip(trip, monthData, templates, workflows) if helper
-          end
-
-        }
+        tripRows = tripsFromMonth['rows']
+        
+        # Process each Trip result record in chunk
+        for trip in tripRows
+          helper.processTrip(trip, monthData, templates, workflows) if helper
+          #staff trips
+          #helper.processStaffTrip(trip, monthData, templates, workflows) if helper
+        end
       }
       #post processing
-      puts "Processing Compensation"
-      helper.postProcessTrips(monthData, templates) if helper
+      #puts "Processing Compensation"
+      #helper.postProcessTrips(monthData, templates) if helper
       #end
 
       puts "      # Skipped: #{helper.getSkippedCount()}"

@@ -12,7 +12,7 @@
 # 3. tutorTrips by workflowId
 # The union of the latter two will give a list of 
 require 'base64'
-require_relative 'config.rb'
+require_relative 'settings.rb'
 require_relative 'helpers/Couch'
 require_relative 'helpers/CouchIterator'
 require_relative 'utilities/cloneDeep'
@@ -36,8 +36,7 @@ END
 puts header
 
 groups = []
-#groups.push({ 'db' => 'group-national_tablet_program', 'helper' => NtpReports, 'startYear' => 2014, 'endYear' => 2016 })
-groups.push({ 'db' => 'group-national_tablet_program_test', 'helper' => NtpReports, 'startYear' => 2016, 'endYear' => 2016 })
+groups.push({ 'db' => 'group-national_tablet_program_test', 'helper' => NtpReports, 'startYear' => 2018, 'endYear' => 2018 })
 
 
 #
@@ -120,10 +119,21 @@ groups.each { |group|
   }
   puts "    #{workflows.length} Workflows Retrieved - (#{time_diff(Time.now(), taskStart)})"
 
-  
+  workflowIds = []
 
-  puts "\n- Caching Workflow Trips:"
-  taskStart = Time.now()
+  workflows.each{ |workflowId, workflow|
+    if workflow['reporting'].nil?
+      next
+    end
+
+    if not workflow['reporting']['preProcess']
+      next
+    end
+    workflowIds.push workflowId
+  }
+
+  #puts "\n- Caching Workflow Trips:"
+  #taskStart = Time.now()
 
   # workflowIds = []
   # workflows.each { |workflow|
@@ -216,9 +226,10 @@ groups.each { |group|
   puts "\n- Processing Tutor Trips By Month"
   taskStart = Time.now()
 
+
   (group["startYear"]..group["endYear"]).each { |year| 
-#    (1..12).each { |month|
-    (1..2).each { |month|
+    #(1..12).each { |month|
+    (1..1).each { |month|
     
       helper.resetSkippedCount() if helper
 
@@ -265,56 +276,67 @@ groups.each { |group|
         end
       }
 
-      monthKeys = ["year#{year}month#{month}"]
-      tripsFromMonth = couch.postRequest({ 
-        :view   => "tutorTrips", 
-        :data   => { "keys"   => monthKeys }, 
-        :params => { "reduce" => false }, 
-        :categoryCache => true,
-        :parseJson => true
-      })
+      workflowIds.each{ |workflowId|
+        puts "    Workflow - #{workflowId}"
+        monthKeys = ["year#{year}month#{month}workflowId#{workflowId}"]
+        
+        tripsFromMonth = couch.postRequest({ 
+          :view   => "tutorTrips", 
+          :data   => { "keys"   => monthKeys }, 
+          :params => { "reduce" => false }, 
+          :categoryCache => true,
+          :parseJson => true
+        })
 
-      tripIds = tripsFromMonth['rows'].map{ |e| e['value'] }
+        tripIds = tripsFromMonth['rows'].map{ |e| e['value'] }
+        # puts "trips #{tripIds}"
+        # remove duplicates
+        tripKeys = tripIds.uniq
 
-      # remove duplicates
-      tripKeys = tripIds.uniq
+        puts "      # Trips: #{tripKeys.size}"
 
-      puts "      # Trips: #{tripKeys.size}"
+        # break trip keys into chunks
+        tripKeyChunks = tripKeys.each_slice(CHUNK_SIZE).to_a
 
-      # break trip keys into chunks
-      tripKeyChunks = tripKeys.each_slice(CHUNK_SIZE).to_a
+        # hash for optimization
+        subjectsExists = {}
+        zoneCountyExists = {
+          'all' => {}
+        }
 
-      # hash for optimization
-      subjectsExists = {}
-      zoneCountyExists = {
-        'all' => {}
+        #
+        # Get chunks of trips and work on the result
+        #
+
+        #print "      Filtering Valid Visits... "
+        tripKeyChunks.each { | tripKeys |
+
+          # get the real data
+          tripsResponse = couch.postRequest({
+            :view => "spirtRotut",
+            :params => { "group" => true },
+            :data => { "keys" => tripKeys },
+            :parseJson => true,
+            :cache => true
+          } )
+          tripRows = tripsResponse['rows']
+
+          #puts "Processing Chunk:  #{tripRows.length}"
+
+          # Process each Trip result record in chunk
+          for trip in tripRows
+            helper.processTrip(trip, monthData, templates, workflows) if helper
+
+            #staff trips
+            helper.processStaffTrip(trip, monthData, templates, workflows) if helper
+          end
+
+        }
       }
-
-      #
-      # Get chunks of trips and work on the result
-      #
-
-      #print "      Filtering Valid Visits... "
-      tripKeyChunks.each { | tripKeys |
-
-        # get the real data
-        tripsResponse = couch.postRequest({
-          :view => "spirtRotut",
-          :params => { "group" => true },
-          :data => { "keys" => tripKeys },
-          :parseJson => true,
-          :cache => true
-        } )
-        tripRows = tripsResponse['rows']
-
-        #puts "Processing Chunk:  #{tripRows.length}"
-
-        # Process each Trip result record in chunk
-        for trip in tripRows
-          helper.processTrip(trip, monthData, templates, workflows) if helper
-        end
-
-      }
+      #post processing
+      puts "Processing Compensation"
+      helper.postProcessTrips(monthData, templates) if helper
+      #end
 
       puts "      # Skipped: #{helper.getSkippedCount()}"
 
@@ -354,9 +376,7 @@ groups.each { |group|
   #   :data => reportSettings 
   # })
 
-  puts "\n  DB Processing Completed - (#{time_diff(Time.now, dbStart)})"
-
-  
+  puts "\n  DB Processing Completed - (#{time_diff(Time.now, dbStart)})"  
 
 }
 
