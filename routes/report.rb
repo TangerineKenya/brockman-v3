@@ -216,10 +216,10 @@ class Brockman < Sinatra::Base
 
             tmp['Maths Score - Class 1'] = safeRead(el.data.visits.byCounty[county].fluency.class[1],'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[1],'operation','size');
             tmp['Maths Score - Class 2'] = safeRead(el.data.visits.byCounty[county].fluency.class[2],'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[2],'operation','size');
-            tmp['Maths Score - Class 2'] = safeRead(el.data.visits.byCounty[county].fluency.class[3],'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[3],'operation','size');
+            tmp['Maths Score - Class 3'] = safeRead(el.data.visits.byCounty[county].fluency.class[3],'operation','sum')/safeRead(el.data.visits.byCounty[county].fluency.class[3],'operation','size');
             if(isNaN(tmp['Maths Score - Class 1'])) { delete tmp['Maths Score - Class 1'] };
             if(isNaN(tmp['Maths Score - Class 2'])) { delete tmp['Maths Score - Class 2'] };
-            if(isNaN(tmp['Maths Score - Class 2'])) { delete tmp['Maths Score - Class 2'] };              
+            if(isNaN(tmp['Maths Score - Class 3'])) { delete tmp['Maths Score - Class 3'] };              
             datasetScores.push(tmp);
           }
 
@@ -253,9 +253,10 @@ class Brockman < Sinatra::Base
             
             tmp['Maths Score - Class 1'] = safeRead(el.data.visits.maths.byCounty[county].fluency.class[1],'operation','sum')/safeRead(el.data.visits.maths.byCounty[county].fluency.class[1],'operation','size');
             tmp['Maths Score - Class 2'] = safeRead(el.data.visits.maths.byCounty[county].fluency.class[2],'operation','sum')/safeRead(el.data.visits.maths.byCounty[county].fluency.class[2],'operation','size');
+            tmp['Maths Score - Class 3'] = safeRead(el.data.visits.maths.byCounty[county].fluency.class[2],'operation','sum')/safeRead(el.data.visits.maths.byCounty[county].fluency.class[3],'operation','size');
             if(isNaN(tmp['Maths Score - Class 1'])) { delete tmp['Maths Score - Class 1'] };
             if(isNaN(tmp['Maths Score - Class 2'])) { delete tmp['Maths Score - Class 2'] };
-                          
+            if(isNaN(tmp['Maths Score - Class 3'])) { delete tmp['Maths Score - Class 3'] };              
             datasetScores.push(tmp);
           }
 

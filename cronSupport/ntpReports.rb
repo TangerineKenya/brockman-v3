@@ -1257,7 +1257,7 @@ class NtpReports
         ipm = itemsPerMinute.to_i
 
         #ignore and exit function where ipm is greater than 120
-        if ipm >=120
+        if Integer(ipm) >=120
           return
         end
 
@@ -1267,31 +1267,33 @@ class NtpReports
         obsClass = grade.to_i
 
         #check subject & benchmarks
-        if (17..120) === ipm and 
+        if Integer(ipm) >=17  and 
           subject == "kiswahili_word" and 
           obsClass.eql?(1)
             fluency['metBenchmark'] += 1
         end
 
-        if (45..120) === ipm  and 
+        if Integer(ipm) >=45  and 
           subject == "kiswahili_word" and 
           obsClass.eql?(2)
             fluency['metBenchmark'] += 1
         end
 
-        if (30..120) === ipm and 
-          subject == "english_word"  and 
-          obsClass.eql?(1) 
+        if (30..120) === Integer(ipm)  and 
+          subject == "english_word" and 
+          obsClass.eql?(1)
             fluency['metBenchmark'] += 1
-            puts "Here 1"
         end
-
-        if (65..120) === ipm and 
+        #>=65 
+        if (65..120) === Integer(ipm)  and 
           subject == "english_word" and 
           obsClass.eql?(2)
             fluency['metBenchmark'] += 1
-            puts "Here 2"
         end
+        #check for english
+        #if subject == 'english_word'
+         # puts "Class: #{grade} - Ipm: #{fluency['itemsPerMinute']} MB: #{fluency['metBenchmark']}"
+       # end 
 
         fluency['benchmarked'] += 1
       #end
@@ -1319,24 +1321,15 @@ class NtpReports
 
     results.map { | items |
       items['inputs'].map { |item|  
-        
+
         if item['mode'] == 'TANGY_TIMED_MODE_DISABLED' and 
           gridFluencyRates = itemsPerMinute(item, grade, subject)
             
-          if !gridFluencyRates.nil? and !gridFluencyRates['itemsPerMinute'].nil?
+          if !gridFluencyRates.nil?
             fluency['itemsPerMinute'] += gridFluencyRates['itemsPerMinute']
+            fluency['benchmarked']    += gridFluencyRates['benchmarked']
+            fluency['metBenchmark']   += gridFluencyRates['metBenchmark']
           end
-
-          if !gridFluencyRates.nil? and !gridFluencyRates['metBenchmark'].nil?
-            fluency['metBenchmark'] += gridFluencyRates['metBenchmark']
-          end
-
-          if !gridFluencyRates.nil? and !gridFluencyRates['benchmarked'].nil?
-            fluency['benchmarked'] += gridFluencyRates['benchmarked']
-          end
-          if subject != 'operation'
-             puts "Subject: #{subject} - Class: #{grade} - Fluency: #{fluency}"
-           end 
         end
       }
     }
