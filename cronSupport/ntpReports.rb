@@ -566,22 +566,27 @@ class NtpReports
             if item['name'] == 'subject'
               subjects = item['value'] || ""
               subjects.map { | e |  
-                #puts "Subject: #{e['name']}"
+                #puts "Subject: #{e}"
                 #if location['level'] == 'school'
                 #  schoolId = location['value'] || ""
                 #end
-                subject = e['name']
+                if e['value'] == 'on'
+                  subject = e['name']
+                end
+
               }
             end
             #get class / grade
             if item['name'] == 'class' or item['name'] == 'grade'
               grades = item['value'] || ""
               grades.map { | e |  
-                #puts "Grade: #{e['name']}"
+                #puts "Grade: #{e}"
                 #if location['level'] == 'school'
                 #  schoolId = location['value'] || ""
                 #end
-                grade = e['name'] 
+                if e['value'] == 'on'
+                  grade = e['name'] 
+                end
               }
             end
             if item['name'] == 'gps-coordinates'
@@ -614,11 +619,16 @@ class NtpReports
     subCountyId   = templates['locationBySchool'][schoolId]['subCountyId']   || ""
     countyId      = templates['locationBySchool'][schoolId]['countyId']      || ""
     
+    #grade 3 instruments don't have class selection - pass value for the grade
+    #grade 3 forms don't have grade selection in the input. Default to grade 3 to prevent nil errors
+    if workflowId == "maths-grade3" or workflowId == "Gradethreeobservationtool"
+      grade = 3
+    end
 
-    #return correct items for each trip
-    itemsPerMinute = correctItemsPerMinute(trip)
-
-    #puts "ipm: #{itemsPerMinute}"
+    #handle subject the same way across all forms
+    if subject == "word"
+      subject = "kiswahili_word"
+    end
 
     #
     # Handle Role-specific calculations
@@ -698,7 +708,7 @@ class NtpReports
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
               { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-              { 'label' => 'Class',           'value' => 1 },
+              { 'label' => 'Class',           'value' => grade.to_i },
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -746,6 +756,187 @@ class NtpReports
             #puts "Grade: #{grade}"
             monthData['geoJSON']['byCounty'][countyId]['data'].push point
           end
+      end
+
+  
+      #
+      # process fluency data
+      #
+      fluency = fluencyRates(trip, grade, subject)
+
+      if !fluency.nil? and 
+         !subject.nil? and
+         subject !=  '' and
+         !grade.nil? and
+         grade != ' '
+        
+        if workflowId == "maths-teachers-observation-tool" or workflowId == "maths-grade3"
+          #itemsPerMinute = fluency['itemsPerMinute']
+          benchmarked    = fluency['benchmarked']
+          met            = fluency['metBenchmark']
+
+          total = fluency['itemsPerMinute']
+
+          obsClass = grade.to_i
+
+          if !@reportSettings['fluency']['subjects'].include?(subject)
+            @reportSettings['fluency']['subjects'].push subject
+          end
+
+          monthData['result']['visits']['maths']['national']['fluency']['class']                              ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['maths']['national']['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['maths']['national']['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['national']['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['maths']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['maths']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['maths']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+        elsif workflowId == "class-12-lesson-observation-with-pupil-books" or workflowId == "Gradethreeobservationtool"
+          
+          #itemsPerMinute = trip['value']['itemsPerMinute']
+          benchmarked    = fluency['benchmarked']
+          met            = fluency['metBenchmark']
+
+          total = fluency['itemsPerMinute']
+
+          obsClass = grade.to_i
+
+          if !@reportSettings['fluency']['subjects'].include?(subject)
+            @reportSettings['fluency']['subjects'].push subject
+          end
+          
+          monthData['result']['visits']['national']['fluency']['class']                              ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['national']['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['national']['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['national']['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['national']['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['byCounty'][countyId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class']                              ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][1][subject]['metBenchmark']  ||= 0
+          
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][2][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3]                           ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]                  ||= {}
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['sum']           ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['size']          ||= 0
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][3][subject]['metBenchmark']  ||= 0
+
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['sum']           += total
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['size']          += benchmarked
+          monthData['result']['visits']['byCounty'][countyId]['zones'][zoneId]['fluency']['class'][obsClass][subject]['metBenchmark']  += met
+
+        end
+
       end
 
     elsif userRole == "scde"
@@ -1031,12 +1222,18 @@ class NtpReports
   end
 
   #
-  # Compute correct Items per Minute For Each grid test that is filled
+  # For each grid test - Count the correct words read, 
+  # the number of leaners assessed which is equal to 1 and 
+  # if the benchmark for the subject and grade have been met
   #
 
-  def itemsPerMinute(item)
+  def itemsPerMinute(item, grade, subject)
     correctItems   = 0
     itemsPerMinute = 0
+    fluency                   ||= {}
+    fluency['itemsPerMinute'] ||= 0
+    fluency['metBenchmark']   ||= 0
+    fluency['benchmarked']    ||= 0
 
     if !item['value'].nil?
       #check that grid test has been completed
@@ -1053,47 +1250,98 @@ class NtpReports
           end
         }
 
-        #startTime = Time.at(item['startTime'].to_i / 1000).getlocal(@timezone)
-        #endTime   = Time.at(item['endTime'].to_i / 1000).getlocal(@timezone)
-
-        #duration = TimeDifference.between(startTime, endTime).in_seconds
         if ((totalTime - timeLeft) / totalTime)  > 0
           itemsPerMinute = (totalItems - (totalItems - correctItems)) / ((totalTime - timeLeft) / totalTime)  
-          #puts "ci: #{itemsPerMinute}" 
-          #puts "-----" 
         end
+        
+        ipm = itemsPerMinute.to_i
+
+        #ignore and exit function where ipm is greater than 120
+        if ipm >=120
+          return
+        end
+
+        #for each grid test pass out neccesasary values
+        fluency['itemsPerMinute'] = ipm
+                
+        obsClass = grade.to_i
+
+        #check subject & benchmarks
+        if (17..120) === ipm and 
+          subject == "kiswahili_word" and 
+          obsClass.eql?(1)
+            fluency['metBenchmark'] += 1
+        end
+
+        if (45..120) === ipm  and 
+          subject == "kiswahili_word" and 
+          obsClass.eql?(2)
+            fluency['metBenchmark'] += 1
+        end
+
+        if (30..120) === ipm and 
+          subject == "english_word"  and 
+          obsClass.eql?(1) 
+            fluency['metBenchmark'] += 1
+            puts "Here 1"
+        end
+
+        if (65..120) === ipm and 
+          subject == "english_word" and 
+          obsClass.eql?(2)
+            fluency['metBenchmark'] += 1
+            puts "Here 2"
+        end
+
+        fluency['benchmarked'] += 1
       #end
     end
     
-    return itemsPerMinute
+    return fluency
   end
 
   #
   # Compute correct Items per Minute For Each Trip
   #
 
-  def correctItemsPerMinute(trip)
-    
-    results = trip['value']['items']
-    totalItemsPerMinute = 0
+  def fluencyRates(trip, grade, subject)
 
+    #build array with fluency details for each trip
+    results                     = trip['value']['items']
+    fluency                   ||= {}
+    fluency['itemsPerMinute'] ||= 0
+    fluency['metBenchmark']   ||= 0
+    fluency['benchmarked']    ||= 0
+    totalItemsPerMinute = 0
     #
     #Get grid tests only from the trip values
     #
 
     results.map { | items |
       items['inputs'].map { |item|  
-        if item['mode'] == 'TANGY_TIMED_MODE_DISABLED'
-          #ipm = itemsPerMinute(item)
-          totalItemsPerMinute += itemsPerMinute(item)
-          puts "cipm: #{ipm} Total: #{totalItemsPerMinute}"
+        
+        if item['mode'] == 'TANGY_TIMED_MODE_DISABLED' and 
+          gridFluencyRates = itemsPerMinute(item, grade, subject)
+            
+          if !gridFluencyRates.nil? and !gridFluencyRates['itemsPerMinute'].nil?
+            fluency['itemsPerMinute'] += gridFluencyRates['itemsPerMinute']
+          end
+
+          if !gridFluencyRates.nil? and !gridFluencyRates['metBenchmark'].nil?
+            fluency['metBenchmark'] += gridFluencyRates['metBenchmark']
+          end
+
+          if !gridFluencyRates.nil? and !gridFluencyRates['benchmarked'].nil?
+            fluency['benchmarked'] += gridFluencyRates['benchmarked']
+          end
+          if subject != 'operation'
+             puts "Subject: #{subject} - Class: #{grade} - Fluency: #{fluency}"
+           end 
         end
       }
     }
-    #averageScore =  totalItemsPerminute / 3
-     
     #puts "-----"
-    return totalItemsPerMinute
+    return fluency
   end
 
   #
