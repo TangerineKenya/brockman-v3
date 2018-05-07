@@ -1265,6 +1265,18 @@ class NtpReports
         fluency['itemsPerMinute'] = ipm
                 
         obsClass = grade.to_i
+        #(30..120) === 
+        if Integer(ipm) >= 30  and 
+          subject == "english_word" and 
+          obsClass.eql?(1)
+            fluency['metBenchmark'] += 1
+        end
+        #>=65 #(65..120) ===
+        if Integer(ipm) >= 65 and 
+          subject == "english_word" and 
+          obsClass.eql?(2)
+            fluency['metBenchmark'] += 1
+        end
 
         #check subject & benchmarks
         if Integer(ipm) >=17  and 
@@ -1275,18 +1287,6 @@ class NtpReports
 
         if Integer(ipm) >=45  and 
           subject == "kiswahili_word" and 
-          obsClass.eql?(2)
-            fluency['metBenchmark'] += 1
-        end
-
-        if (30..120) === Integer(ipm)  and 
-          subject == "english_word" and 
-          obsClass.eql?(1)
-            fluency['metBenchmark'] += 1
-        end
-        #>=65 
-        if (65..120) === Integer(ipm)  and 
-          subject == "english_word" and 
           obsClass.eql?(2)
             fluency['metBenchmark'] += 1
         end
