@@ -147,7 +147,7 @@ groups.each { |group|
 
   (group["startYear"]..group["endYear"]).each { |year| 
     #(1..12).each { |month|
-    (4..5).each { |month|
+    (5..5).each { |month|
 
       helper.resetSkippedCount() if helper
 

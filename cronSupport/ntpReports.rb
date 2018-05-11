@@ -391,132 +391,134 @@ class NtpReports
     puts " #{userDocs['rows'].size} Total Users"
     
     #associate users with their county and zone for future processing
-    userDocs['rows'].map{ | user | 
-      unless user['value'].nil?
-        username                                          = user['value']['_id']
-        #check user has items
-        return err(true, "user #{username} has no values") if user['value']['items'].nil?
-        userDoc                                              = user['value']['items']
+    if !userDocs['rows'].nil?
+      userDocs['rows'].map{ | user | 
+        if !user['value'].nil?
+          username                                          = user['value']['_id']
+          #check user has items
+          return err(true, "user #{username} has no values") if user['value']['items'].nil?
+          userDoc                                              = user['value']['items']
 
-        templates['users']['all']                       ||= {}
-        #templates['users'][county]                      ||= {}
-        #templates['users'][county][zone]                ||= {}
-        #templates['users'][county][zone][username]        = true
+          templates['users']['all']                       ||= {}
+          #templates['users'][county]                      ||= {}
+          #templates['users'][county][zone]                ||= {}
+          #templates['users'][county][zone][username]        = true
 
-        templates['users']['all'][username]                            ||= {}
-        #templates['users']['all'][username]['name']                      = ''
-        #templates['users']['all'][username]['role']                      = role
+          templates['users']['all'][username]                            ||= {}
+          #templates['users']['all'][username]['name']                      = ''
+          #templates['users']['all'][username]['role']                      = role
 
-        templates['users']['all'][username]['target']                  ||= {}      # container for target zone visits
-        templates['users']['all'][username]['target']['visits']        ||= 0
-        templates['users']['all'][username]['target']['compensation']  ||= 0
+          templates['users']['all'][username]['target']                  ||= {}      # container for target zone visits
+          templates['users']['all'][username]['target']['visits']        ||= 0
+          templates['users']['all'][username]['target']['compensation']  ||= 0
 
-        templates['users']['all'][username]['other']                   ||= {}      # container for non-target zone visits
+          templates['users']['all'][username]['other']                   ||= {}      # container for non-target zone visits
 
-        templates['users']['all'][username]['total']                   ||= {}      # container for visit and compensation totals
-        templates['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
-        templates['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
-        templates['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
+          templates['users']['all'][username]['total']                   ||= {}      # container for visit and compensation totals
+          templates['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
+          templates['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
+          templates['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
 
-        userDoc.map { | items |  
-           #puts "#{item['inputs']}"
-           unless items['inputs'].nil?
-              items['inputs'].map { |item|  
-                
-                templates['users']['all'][username]['data']                      = item
+          if !user['value']['items'].nil?
+            userDoc.map { | items |  
+             #puts "#{item['inputs']}"
+             if !items['inputs'].nil?
+                items['inputs'].map { |item|  
+                  
+                  templates['users']['all'][username]['data']                      = item
 
-                return err(true, "user #{username} has no values") if item.nil?
-                role = 'cso'
-                 #get role values
-                if item['name'] == 'role'
-                   roles = item['value']
+                  return err(true, "user #{username} has no values") if item.nil?
+                  role = 'cso'
+                   #get role values
+                  if item['name'] == 'role'
+                     roles = item['value']
 
-                   roles.map { | e |  
-                     if e['value'] == 'on'
-                       #puts "role #{e['name']}"
-                      role = e['name']
-                      templates['users']['all'][username]['role']                      = e['name']
-                     end
-                   }
-                end
-                first_name = ''
-                if item['name'] == 'first_name'
-                  first_name = item['value']
-                end
-                last_name = ''
-                if item['name'] == 'last_name'
-                  last_name = item['value']
-                end
-                templates['users']['all'][username]['name']                      = first_name+' '+last_name
-
-                #puts "Names: #{templates['users']['all'][username]['name']}"
-
-                #get location values
-                county = ''
-                subCounty = ''
-                zone = ''
-
-                if item['name'] == 'location'
-                  locations = item['value']
-                  locations.map { | location |  
-                    if location['level'] == 'county'
-                      county = location['value']
-                    end
-                    if location['level'] == 'subcounty'
-                      subCounty = location['value']
-                    end
-                    if location['level'] == 'zone'
-                      zone = location['value']
-                    end
-                  }
-                end
-
-                if !county.nil? && !zone.nil?
-                  templates['users'][county]                      ||= {}
-                  templates['users'][county][zone]                ||= {}
-                  templates['users'][county][zone][username]        = true
-                end 
-
-                #staff users
-                if role == 'rti-staff'
-                  templates['result']['staff']['users'][username]                    ||= {}
-                  #templates['result']['staff']['users'][username][county]            ||= {}
-                  #templates['result']['staff']['users'][username][county][zone]      ||= {}
-                  templates['result']['staff']['users'][username]['role']              = role
-                  templates['result']['staff']['users'][username]['data']            ||= item
-                end
-                
-                # only do this if there is a valid subcounty taht currently exists
-                if !subCounty.nil?
-
-                  if role == "scde"
-                    
-                    templates['result']['visits']['scde']['national']['quota']                                   += 8
-                    templates['result']['visits']['byCounty'][county]['scde']['quota']                           += 8
-                    templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['scde']['quota'] += 8
-
-                  elsif role == "esqac"
-
-                    templates['result']['visits']['esqac']['national']['quota']                                   += 10
-                    templates['result']['visits']['byCounty'][county]['esqac']['quota']                           += 10
-                    #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['esqac']['quota'] += 10
-
-                    templates['result']['visits']['priede']['national']['quota']                                   += 10
-                    templates['result']['visits']['byCounty'][county]['priede']['quota']                           += 10
-                    #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['priede']['quota'] += 10
-
-                    templates['result']['visits']['moe']['national']['quota']                                   += 10
-                    templates['result']['visits']['byCounty'][county]['moe']['quota']                           += 10
-                    #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['moe']['quota'] += 10
-
+                     roles.map { | e |  
+                       if e['value'] == 'on'
+                         #puts "role #{e['name']}"
+                        role = e['name']
+                        templates['users']['all'][username]['role']                      = e['name']
+                       end
+                     }
                   end
-                end
-              }
-           end
-        }
-        #return err(true, "user #{username} has no values") if userDoc['inputs'].nil?        
-      end
-    }
+                  first_name = ''
+                  if item['name'] == 'first_name'
+                    first_name = item['value']
+                  end
+                  last_name = ''
+                  if item['name'] == 'last_name'
+                    last_name = item['value']
+                  end
+                  templates['users']['all'][username]['name']                      ||= first_name+' '+last_name
+
+                  #puts "Names: #{templates['users']['all'][username]['name']}"
+
+                  #get location values
+                  county = ''
+                  subCounty = ''
+                  zone = ''
+
+                  if item['name'] == 'location'
+                    locations = item['value']
+                    locations.map { | location |  
+                      if location['level'] == 'county'
+                        county = location['value']
+                      end
+                      if location['level'] == 'subcounty'
+                        subCounty = location['value']
+                      end
+                      if location['level'] == 'zone'
+                        zone = location['value']
+                      end
+                    }
+                  end
+
+                  if !county.nil? && !zone.nil?
+                    templates['users'][county]                      ||= {}
+                    templates['users'][county][zone]                ||= {}
+                    templates['users'][county][zone][username]        = true
+                  end 
+
+                  #staff users
+                  if role == 'rti-staff'
+                    templates['result']['staff']['users'][username]                    ||= {}
+                    #templates['result']['staff']['users'][username][county]            ||= {}
+                    #templates['result']['staff']['users'][username][county][zone]      ||= {}
+                    templates['result']['staff']['users'][username]['role']              = role
+                    templates['result']['staff']['users'][username]['data']            ||= item
+                  end
+                  
+                  # only do this if there is a valid subcounty that currently exists
+                  if !county.nil? && !subCounty.nil?
+
+                    if role == "scde"
+                      templates['result']['visits']['scde']['national']['quota']                                   += 8
+                      #templates['result']['visits']['byCounty'][county]['scde']['quota']                           += 8
+                      #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['scde']['quota'] += 8
+
+                    elsif role == "esqac"
+
+                      templates['result']['visits']['esqac']['national']['quota']                                   += 10
+                      templates['result']['visits']['byCounty'][county]['esqac']['quota']                           += 10
+                      #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['esqac']['quota'] += 10
+
+                      templates['result']['visits']['priede']['national']['quota']                                   += 10
+                      templates['result']['visits']['byCounty'][county]['priede']['quota']                           += 10
+                      #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['priede']['quota'] += 10
+
+                      templates['result']['visits']['moe']['national']['quota']                                   += 10
+                      templates['result']['visits']['byCounty'][county]['moe']['quota']                           += 10
+                      #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['moe']['quota'] += 10
+
+                    end
+                  end
+                }
+             end
+            } 
+          end
+        end
+      }    
+    end
 
     return templates
   end # of processUsers
@@ -599,7 +601,7 @@ class NtpReports
     end
 
     #check for completeness
-    return err(true, "Incomplete trip") if trip['value']['form']['complete'] != true
+    return err(true, "Incomplete trip") if not trip['value']['form']['complete'] == true
 
     # validate user and role-workflow assocaition
     return err(true, "User does not exist: #{username}") if not templates['users']['all'][username]
@@ -610,8 +612,8 @@ class NtpReports
     return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['targetRoles']}") if not workflows[workflowId]['targetRoles'].include? userRole
 
     # validate against the workflow constraints
-    # validated = validateTrip(trip, workflows[workflowId])
-    # return err(true, "Trip did not validate against workflow constraints") if not validated
+    validated = validateTrip(trip, workflows[workflowId])
+    #return err(true, "Trip did not validate against workflow constraints") if not validated
 
     return err(true, "School was not found in database") if templates['locationBySchool'][schoolId].nil?
 
@@ -744,7 +746,7 @@ class NtpReports
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
               { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-              { 'label' => 'Class',           'value' => 1 },
+              { 'label' => 'Class',           'value' => grade.to_i },
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -1012,7 +1014,7 @@ class NtpReports
         point['properties'] = [
           { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
           { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-          { 'label' => 'Class',           'value' => grade },
+          { 'label' => 'Class',           'value' => grade.to_i},
           { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
           { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
           { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -1349,8 +1351,8 @@ class NtpReports
     return true if not workflow['constraints']
 
     #assume incomplete if there is no min and max time defined
-    return false if not trip['value']['minTime']
-    return false if not trip['value']['maxTime']
+    #return false if not trip['value']['minTime']
+    #return false if not trip['value']['maxTime']
 
     if !@timezone.nil?
       startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
@@ -1368,11 +1370,11 @@ class NtpReports
 
       elsif type == "duration"
         if constraint["hours"]
-          return false if TimeDifference.between(startDate, endDate).in_hours < constraint["hours"]
+          #return false if TimeDifference.between(startDate, endDate).in_hours < constraint["hours"]
         elsif constraint["minutes"]
-          return false if TimeDifference.between(startDate, endDate).in_minutes < constraint["minutes"]
+          #return false if TimeDifference.between(startDate, endDate).in_minutes < constraint["minutes"]
         elsif constraint["seconds"]
-          return false if TimeDifference.between(startDate, endDate).in_seconds < constraint["seconds"]
+          #return false if TimeDifference.between(startDate, endDate).in_seconds < constraint["seconds"]
         end
       end 
     }

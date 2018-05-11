@@ -99,7 +99,7 @@ class Brockman < Sinatra::Base
         dates[TREND_MONTHS]       = { month:month, year:year};
         dates[TREND_MONTHS].link  = base+'reportData/#{group}/report-aggregate-year#{year.to_i}month#{month.to_i}.json';
         
-        var skipMonths = [-1,0,8,11,12];
+        var skipMonths = [-1,0,8,4,11,12];
         var skippedMonths = 0;
         // create links for trends by month
         for ( var i = TREND_MONTHS-1; i > 0; i-- ) {

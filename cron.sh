@@ -2,7 +2,7 @@
  
 source /home/ubuntu/.bashrc
 
-cd /www/_csv
+cd /www/_v3
 
 ruby cron.rb > cron.log 2>&1
 
