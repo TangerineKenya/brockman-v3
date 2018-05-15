@@ -613,7 +613,7 @@ class NtpReports
 
     # validate against the workflow constraints
     validated = validateTrip(trip, workflows[workflowId])
-    #return err(true, "Trip did not validate against workflow constraints") if not validated
+    return err(true, "Trip did not validate against workflow constraints") if not validated
 
     return err(true, "School was not found in database") if templates['locationBySchool'][schoolId].nil?
 
@@ -1350,16 +1350,37 @@ class NtpReports
     return true if not workflow['enabled']
     return true if not workflow['constraints']
 
+    start_time = ''
+    end_time   = ''
+
+    if !trip['value']['items'].nil?
+      #puts "workflow #{trip['value']['items']}"
+      results = trip['value']['items']
+
+      results.map { | items |   
+        if !items['inputs'].nil?
+          items['inputs'].map { |item|  
+            if item['name'] == 'start_time'
+              start_time = item['value']
+            end
+            if item['name'] == 'end_time'
+              end_time = item['value']
+            end
+          }
+        end
+      }
+    end
+
     #assume incomplete if there is no min and max time defined
-    #return false if not trip['value']['minTime']
-    #return false if not trip['value']['maxTime']
+    return false if start_time.nil?
+    return false if end_time.nil?
 
     if !@timezone.nil?
-      startDate = Time.at(trip['value']['minTime'].to_i / 1000).getlocal(@timezone)
-      endDate   = Time.at(trip['value']['maxTime'].to_i / 1000).getlocal(@timezone)
+      startDate = Time.at(start_time.to_i / 1000).getlocal(@timezone)
+      endDate   = Time.at(end_time.to_i / 1000).getlocal(@timezone)
     else 
-      startDate = Time.at(trip['value']['minTime'].to_i / 1000)
-      endDate   = Time.at(trip['value']['maxTime'].to_i / 1000)
+      startDate = Time.at(start_time.to_i / 1000)
+      endDate   = Time.at(end_time.to_i / 1000)
     end
 
     workflow['constraints'].each { | type, constraint |
@@ -1370,11 +1391,11 @@ class NtpReports
 
       elsif type == "duration"
         if constraint["hours"]
-          #return false if TimeDifference.between(startDate, endDate).in_hours < constraint["hours"]
+          return false if TimeDifference.between(startDate, endDate).in_hours < constraint["hours"]
         elsif constraint["minutes"]
-          #return false if TimeDifference.between(startDate, endDate).in_minutes < constraint["minutes"]
+          return false if TimeDifference.between(startDate, endDate).in_minutes < constraint["minutes"]
         elsif constraint["seconds"]
-          #return false if TimeDifference.between(startDate, endDate).in_seconds < constraint["seconds"]
+          return false if TimeDifference.between(startDate, endDate).in_seconds < constraint["seconds"]
         end
       end 
     }
