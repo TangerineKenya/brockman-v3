@@ -710,7 +710,7 @@ class NtpReports
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
               { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-              { 'label' => 'Class',           'value' => grade.to_i },
+              { 'label' => 'Class',           'value' => grade },
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -746,7 +746,7 @@ class NtpReports
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
               { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-              { 'label' => 'Class',           'value' => grade.to_i },
+              { 'label' => 'Class',           'value' => grade},
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -1014,7 +1014,7 @@ class NtpReports
         point['properties'] = [
           { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
           { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-          { 'label' => 'Class',           'value' => grade.to_i},
+          { 'label' => 'Class',           'value' => grade},
           { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
           { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
           { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -1256,7 +1256,7 @@ class NtpReports
           itemsPerMinute = (totalItems - (totalItems - correctItems)) / ((totalTime - timeLeft) / totalTime)  
         end
         
-        ipm = itemsPerMinute.to_i
+        ipm = itemsPerMinute
 
         #ignore and exit function where ipm is greater than 120
         if Integer(ipm) >=120
@@ -1266,7 +1266,7 @@ class NtpReports
         #for each grid test pass out neccesasary values
         fluency['itemsPerMinute'] = ipm
                 
-        obsClass = grade.to_i
+        obsClass = grade
         #(30..120) === 
         if Integer(ipm) >= 30  and 
           subject == "english_word" and 

@@ -146,7 +146,6 @@ groups.each { |group|
 
 
   (group["startYear"]..group["endYear"]).each { |year| 
-    #(1..12).each { |month|
     (5..5).each { |month|
 
       helper.resetSkippedCount() if helper
@@ -211,7 +210,7 @@ groups.each { |group|
         # remove duplicates
         tripKeys = tripIds.uniq
 
-        puts "      # Trips: #{tripKeys.size}"
+        #puts "      # Trips: #{tripKeys.size}"
 
          # break trip keys into chunks
         tripKeyChunks = tripKeys.each_slice(CHUNK_SIZE).to_a
