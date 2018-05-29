@@ -1221,7 +1221,7 @@ class NtpReports
   # the number of leaners assessed which is equal to 1 and 
   # if the benchmark for the subject and grade have been met
   #
-```ruby
+
   def itemsPerMinute(item, grade, subject)
     correctItems   = 0
     itemsPerMinute = 0
@@ -1328,7 +1328,7 @@ class NtpReports
     #puts "-----"
     return fluency
   end
-```
+
   #
   #
   #  Validate the trip results against the constraints stored in the workflow 
