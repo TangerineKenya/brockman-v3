@@ -210,7 +210,7 @@ groups.each { |group|
         # remove duplicates
         tripKeys = tripIds.uniq
 
-        #puts "      # Trips: #{tripKeys.size}"
+        puts "      # Trips: #{tripKeys.size}"
 
          # break trip keys into chunks
         tripKeyChunks = tripKeys.each_slice(CHUNK_SIZE).to_a

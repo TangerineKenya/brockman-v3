@@ -418,6 +418,8 @@ class NtpReports
           templates['users']['all'][username]['total']['visits']         ||= 0       # total visits across zones
           templates['users']['all'][username]['total']['compensation']   ||= 0       # total compensation across zones
           templates['users']['all'][username]['flagged']                 ||= false   # alert to visits outside of primary zone
+          last_name = ''
+          first_name = ''
 
           if !user['value']['items'].nil?
             userDoc.map { | items |  
@@ -441,18 +443,14 @@ class NtpReports
                        end
                      }
                   end
-                  first_name = ''
                   if item['name'] == 'first_name'
                     first_name = item['value']
                   end
-                  last_name = ''
+                  
                   if item['name'] == 'last_name'
                     last_name = item['value']
                   end
-                  templates['users']['all'][username]['name']                      ||= first_name+' '+last_name
-
-                  #puts "Names: #{templates['users']['all'][username]['name']}"
-
+                  
                   #get location values
                   county = ''
                   subCounty = ''
@@ -498,23 +496,24 @@ class NtpReports
 
                     elsif role == "esqac"
 
-                      templates['result']['visits']['esqac']['national']['quota']                                   += 10
-                      templates['result']['visits']['byCounty'][county]['esqac']['quota']                           += 10
+                      #templates['result']['visits']['esqac']['national']['quota']                                   += 10
+                      #templates['result']['visits']['byCounty'][county]['esqac']['quota']                           += 10
                       #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['esqac']['quota'] += 10
 
-                      templates['result']['visits']['priede']['national']['quota']                                   += 10
-                      templates['result']['visits']['byCounty'][county]['priede']['quota']                           += 10
+                      #templates['result']['visits']['priede']['national']['quota']                                   += 10
+                      #templates['result']['visits']['byCounty'][county]['priede']['quota']                           += 10
                       #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['priede']['quota'] += 10
 
-                      templates['result']['visits']['moe']['national']['quota']                                   += 10
-                      templates['result']['visits']['byCounty'][county]['moe']['quota']                           += 10
+                      #templates['result']['visits']['moe']['national']['quota']                                   += 10
+                      #templates['result']['visits']['byCounty'][county]['moe']['quota']                           += 10
                       #templates['result']['visits']['byCounty'][county]['subCounties'][subCounty]['moe']['quota'] += 10
 
                     end
                   end
                 }
              end
-            } 
+            }
+            templates['users']['all'][username]['name']                      ||= first_name+' '+last_name
           end
         end
       }    
@@ -587,7 +586,7 @@ class NtpReports
                 #  schoolId = location['value'] || ""
                 #end
                 if e['value'] == 'on'
-                  grade = e['name'] 
+                  grade = e['name'].to_i 
                 end
               }
             end
@@ -608,7 +607,7 @@ class NtpReports
     userRole = templates['users']['all'][username]['role']
     #users full names
     user = templates['users']['all'][username]['name'] 
-
+   
     return err(true, "User role does not match with workflow: #{username} | #{templates['users']['all'][username]['role']} - targets #{workflows[workflowId]['targetRoles']}") if not workflows[workflowId]['targetRoles'].include? userRole
 
     # validate against the workflow constraints
@@ -746,7 +745,7 @@ class NtpReports
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
               { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-              { 'label' => 'Class',           'value' => grade},
+              { 'label' => 'Class',           'value' => grade.to_i},
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -764,19 +763,14 @@ class NtpReports
       #
       # process fluency data
       #
-      fluency = fluencyRates(trip, grade, subject)
-
-      if !fluency.nil? and 
-         !subject.nil? and
-         subject !=  '' and
-         !grade.nil? and
-         grade != ' '
+      fluency = fluencyRates(trip, grade.to_i, subject)
+      
+      if !fluency.nil? 
         
         if workflowId == "maths-teachers-observation-tool" or workflowId == "maths-grade3"
           #itemsPerMinute = fluency['itemsPerMinute']
           benchmarked    = fluency['benchmarked']
           met            = fluency['metBenchmark']
-
           total = fluency['itemsPerMinute']
 
           obsClass = grade.to_i
@@ -859,8 +853,7 @@ class NtpReports
           #itemsPerMinute = trip['value']['itemsPerMinute']
           benchmarked    = fluency['benchmarked']
           met            = fluency['metBenchmark']
-
-          total = fluency['itemsPerMinute']
+          total          = fluency['itemsPerMinute']
 
           obsClass = grade.to_i
 
@@ -1014,7 +1007,7 @@ class NtpReports
         point['properties'] = [
           { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
           { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-          { 'label' => 'Class',           'value' => grade},
+          { 'label' => 'Class',           'value' => grade.to_i},
           { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
           { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
           { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -1238,8 +1231,6 @@ class NtpReports
     fluency['benchmarked']    ||= 0
 
     if !item['value'].nil?
-      #check that grid test has been completed
-      #if item['incomplete'] == false
         #get total items
         totalItems = item['value'].length
 
@@ -1256,7 +1247,7 @@ class NtpReports
           itemsPerMinute = (totalItems - (totalItems - correctItems)) / ((totalTime - timeLeft) / totalTime)  
         end
         
-        ipm = itemsPerMinute
+        ipm = itemsPerMinute.to_i
 
         #ignore and exit function where ipm is greater than 120
         if Integer(ipm) >=120
@@ -1266,30 +1257,29 @@ class NtpReports
         #for each grid test pass out neccesasary values
         fluency['itemsPerMinute'] = ipm
                 
-        obsClass = grade
         #(30..120) === 
         if Integer(ipm) >= 30  and 
           subject == "english_word" and 
-          obsClass.eql?(1)
+          Integer(grade) == 1
             fluency['metBenchmark'] += 1
         end
         #>=65 #(65..120) ===
         if Integer(ipm) >= 65 and 
           subject == "english_word" and 
-          obsClass.eql?(2)
+          Integer(grade) == 2
             fluency['metBenchmark'] += 1
         end
 
         #check subject & benchmarks
-        if Integer(ipm) >=17  and 
+        if Integer(ipm) >= 17  and 
           subject == "kiswahili_word" and 
-          obsClass.eql?(1)
+          Integer(grade) == 1
             fluency['metBenchmark'] += 1
         end
 
-        if Integer(ipm) >=45  and 
+        if Integer(ipm) >= 45  and 
           subject == "kiswahili_word" and 
-          obsClass.eql?(2)
+          Integer(grade) == 2
             fluency['metBenchmark'] += 1
         end
         #check for english
@@ -1316,15 +1306,14 @@ class NtpReports
     fluency['itemsPerMinute'] ||= 0
     fluency['metBenchmark']   ||= 0
     fluency['benchmarked']    ||= 0
-    totalItemsPerMinute = 0
+   
     #
     #Get grid tests only from the trip values
     #
-
     results.map { | items |
       items['inputs'].map { |item|  
 
-        if item['mode'] == 'TANGY_TIMED_MODE_DISABLED' and 
+        if item['mode'] == 'TANGY_TIMED_MODE_DISABLED'  
           gridFluencyRates = itemsPerMinute(item, grade, subject)
             
           if !gridFluencyRates.nil?
@@ -1332,6 +1321,7 @@ class NtpReports
             fluency['benchmarked']    += gridFluencyRates['benchmarked']
             fluency['metBenchmark']   += gridFluencyRates['metBenchmark']
           end
+          
         end
       }
     }
