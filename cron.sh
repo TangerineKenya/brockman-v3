@@ -5,5 +5,5 @@ source /home/ubuntu/.bashrc
 cd /www/_v3
 
 ruby cron.rb > cron.log 2>&1
-
+ruby tusomeCron.rb > cron.log 2>&1
 
