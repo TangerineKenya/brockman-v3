@@ -36,7 +36,7 @@ END
 puts header
 
 groups = []
-groups.push({ 'db' => 'group-national_tablet_program', 'db2' => 'tusome-v3-prod', 'helper' => TusomeReports, 'startYear' => 2018, 'endYear' => 2018 })
+groups.push({ 'db' => 'group-national_tablet_program', 'helper' => TusomeReports, 'startYear' => 2018, 'endYear' => 2018 })
 
 
 #
@@ -61,7 +61,7 @@ groups.each { |group|
   helper = group["helper"] || nil
 
   # New V3 database
-  dbConn = group["db2"] || ""
+  dbConn = "tusome-v3-prod"
 
   puts "\nStarting DB: #{dbConn}"
   dbStart = Time.now()
@@ -174,7 +174,7 @@ groups.each { |group|
 
       # Check to see if the aggregate doc already exists - need for doc update
       begin
-        aggDoc = couch.getRequest({ 
+        aggDoc = couchdb.getRequest({ 
           :doc => "#{aggregateDocId}", 
           :parseJson => true 
         })
@@ -190,7 +190,7 @@ groups.each { |group|
       # Check to see if the aggregate geo doc already exists for each county - needed for doc update
       monthData['geoJSON']['byCounty'].map { | countyId, county |
         begin
-          aggGeoDoc = couch.getRequest({ 
+          aggGeoDoc = couchdb.getRequest({ 
             :doc => "#{aggregateGeoDocId}-#{countyId}", 
             :parseJson => true 
           })
