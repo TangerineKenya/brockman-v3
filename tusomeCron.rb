@@ -36,7 +36,7 @@ END
 puts header
 
 groups = []
-groups.push({ 'db' => 'group-national_tablet_program', 'helper' => TusomeReports, 'startYear' => 2018, 'endYear' => 2018 })
+groups.push({ 'db' => 'group-national_tablet_program_test', 'helper' => TusomeReports, 'startYear' => 2018, 'endYear' => 2018 })
 
 
 #
@@ -91,7 +91,7 @@ groups.each { |group|
   # get report aggregate settings
   #
   begin
-    reportSettings = couch.getRequest({ :doc => "report-aggregate-settings", :parseJson => true })
+    reportSettings = couchdb.getRequest({ :doc => "report-aggregate-settings", :parseJson => true })
   rescue => e
     # the doc doesn't already exist
     reportSettings                          ||= {}
@@ -173,6 +173,7 @@ groups.each { |group|
       monthData['geoJSON']    = cloneDeep(templates['geoJSON'])
 
       # Check to see if the aggregate doc already exists - need for doc update
+      # Note: - Check in ntp database
       begin
         aggDoc = couchdb.getRequest({ 
           :doc => "#{aggregateDocId}", 
@@ -188,6 +189,7 @@ groups.each { |group|
       end
 
       # Check to see if the aggregate geo doc already exists for each county - needed for doc update
+      # Note: - Check in ntp database
       monthData['geoJSON']['byCounty'].map { | countyId, county |
         begin
           aggGeoDoc = couchdb.getRequest({ 
@@ -232,14 +234,26 @@ groups.each { |group|
           'all' => {}
         }
 
-        tripRows = tripsFromMonth['rows']
-        
-        # Process each Trip result record in chunk
-        for trip in tripRows
-          helper.processTrip(trip, monthData, templates, workflows) if helper
-          #staff trips
-          #helper.processStaffTrip(trip, monthData, templates, workflows) if helper
-        end
+        tripKeyChunks.each { | tripKeys |
+
+          # get the real data
+          tripsResponse = couch.postRequest({
+            :view => "completedTripsById",
+            :params => { "reduce" => false }, 
+            :data => { "keys" => tripKeys },
+            :parseJson => true,
+            :cache => true
+          } )
+          tripRows = tripsResponse['rows']
+
+          puts "Processing Chunk:  #{tripRows.length}"
+          #puts "#{tripRows}"
+          # Process each Trip result record in chunk
+          for trip in tripRows
+            helper.processTrip(trip, monthData, templates, workflows) if helper
+          end
+
+        }
       }
       #post processing
       #puts "Processing Compensation"
