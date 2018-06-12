@@ -17,7 +17,7 @@ class TusomeReports
 
     @locationList = nil
     @tripsSkipped = 0
-    @subjectLegend   = { "english_word" => "English", "kiswahili_word" => "Kiswahili", "operation" => "Maths" } 
+    @subjectLegend   = { "english_word" => "English", "word" => "Kiswahili", "operation" => "Maths" } 
 
   end # of initialize
 
@@ -627,8 +627,8 @@ class TusomeReports
     end
 
     #handle subject the same way across all forms
-    if subject == "word"
-      subject = "kiswahili_word"
+    if subject == "kiswahili_word"
+      subject = "word"
     end
 
     #
@@ -744,7 +744,7 @@ class TusomeReports
             point['properties'] = [
               { 'label' => 'Date',            'value' => startDate.strftime("%d-%m-%Y %H:%M") },
               { 'label' => 'Subject',         'value' => @subjectLegend[subject] },
-              { 'label' => 'Class',           'value' => grade.to_i},
+              { 'label' => 'Class',           'value' => grade},
               { 'label' => 'County',          'value' => titleize(@locationList['locations'][countyId]['label'].downcase) },
               { 'label' => 'Zone',            'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['label'].downcase) },
               { 'label' => 'School',          'value' => titleize(@locationList['locations'][countyId]['children'][subCountyId]['children'][zoneId]['children'][schoolId]['label'].downcase) },
@@ -757,8 +757,7 @@ class TusomeReports
             monthData['geoJSON']['byCounty'][countyId]['data'].push point
           end
       end
-
-  
+      
       #
       # process fluency data
       #
@@ -770,7 +769,7 @@ class TusomeReports
           #itemsPerMinute = fluency['itemsPerMinute']
           benchmarked    = fluency['benchmarked']
           met            = fluency['metBenchmark']
-          total = fluency['itemsPerMinute']
+          total          = fluency['itemsPerMinute']
 
           obsClass = grade.to_i
 
@@ -1242,7 +1241,7 @@ class TusomeReports
           end
         }
 
-        if ((totalTime - timeLeft) / totalTime)  > 0
+        if ((totalTime - timeLeft) / totalTime)  != 0
           itemsPerMinute = (totalItems - (totalItems - correctItems)) / ((totalTime - timeLeft) / totalTime)  
         end
         
@@ -1255,38 +1254,31 @@ class TusomeReports
 
         #for each grid test pass out neccesasary values
         fluency['itemsPerMinute'] = ipm
-                
+        fluency['benchmarked']    = 1        
         #(30..120) === 
-        if Integer(ipm) >= 30  and 
-          subject == "english_word" and 
-          Integer(grade) == 1
-            fluency['metBenchmark'] += 1
-        end
-        #>=65 #(65..120) ===
-        if Integer(ipm) >= 65 and 
-          subject == "english_word" and 
-          Integer(grade) == 2
-            fluency['metBenchmark'] += 1
-        end
-
+        
         #check subject & benchmarks
-        if Integer(ipm) >= 17  and 
-          subject == "kiswahili_word" and 
-          Integer(grade) == 1
-            fluency['metBenchmark'] += 1
+        if Integer(ipm) >= 17  and subject == "word" and Integer(grade) == 1
+            fluency['metBenchmark'] = 1
         end
 
-        if Integer(ipm) >= 45  and 
-          subject == "kiswahili_word" and 
-          Integer(grade) == 2
-            fluency['metBenchmark'] += 1
+        if Integer(ipm) >= 30  and subject == "english_word" and Integer(grade) == 1
+            fluency['metBenchmark'] = 1
+        end
+
+        #>=65 #(65..120) ===
+        if Integer(ipm) >= 65 and subject == "english_word" and Integer(grade) == 2
+            fluency['metBenchmark'] = 1
+        end
+
+        if Integer(ipm) >= 45  and subject == "word" and Integer(grade) == 2
+            fluency['metBenchmark'] = 1
         end
         #check for english
         #if subject == 'english_word'
          # puts "Class: #{grade} - Ipm: #{fluency['itemsPerMinute']} MB: #{fluency['metBenchmark']}"
        # end 
 
-        fluency['benchmarked'] += 1
       #end
     end
     

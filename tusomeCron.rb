@@ -48,7 +48,7 @@ workflowStart = nil
 taskStart     = nil
 subTaskStart  = nil
 
-CHUNK_SIZE  = 1000
+CHUNK_SIZE  = 100
 
 groups.each { |group|
 
